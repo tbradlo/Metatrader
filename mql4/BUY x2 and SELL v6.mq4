@@ -1,3 +1,5 @@
+/** version v6.1 15 Dec 2022 */
+
 #property strict
 
 #include <stdlib.mqh>
@@ -87,29 +89,42 @@ void OnTick(void)
   {
     comment = "";
     readPositions();
-    
+
     calculate();
-    
+
     if (ordersTotal != totalBuyPositions + totalSellPositions){
       OnTrade();
       ordersTotal = totalBuyPositions + totalSellPositions;
     }
-    
+
     Comment(comment);
 }
-  
+
 void readPositions(){
-    ArrayFree(buyPositions);
-    ArrayFree(buyLimitPositions);
-    ArrayFree(sellPositions);
-   
+   ArrayFree(buyPositions);
+   ArrayFree(buyLimitPositions);
+   ArrayFree(sellPositions);
+
+   double breakEvenPrice = 0;
+   double totalBuyWagedOpenPrice = 0;
+   double totalBuyLots = 0;
+   double totalSellWagedOpenPrice = 0;
+   double totalSellLots = 0;
+   double totalProfit = 0;
+
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && (expertId == OrderMagicNumber() || expertId == 0) && _Symbol == OrderSymbol()) {
          Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice());
          if (OrderType() == OP_SELL) {
             ArrayAppend(sellPositions, p);
+            totalProfit += p.profit;
+            totalSellWagedOpenPrice += p.openPrice * p.lots;
+            totalSellLots += p.lots;
          } else if (OrderType() == OP_BUY){
             ArrayAppend(buyPositions, p);
+            totalProfit += p.profit;
+            totalBuyWagedOpenPrice += p.openPrice * p.lots;
+            totalBuyLots += p.lots;
          } else if (OrderType() == OP_BUYLIMIT) {
             ArrayAppend(buyLimitPositions, p);
          }
@@ -123,6 +138,33 @@ void readPositions(){
    totalBuyPositions = ArraySize(buyPositions);
    totalBuyLimitPositions = ArraySize(buyLimitPositions);
    totalSellPositions = ArraySize(sellPositions);
+
+   double totalBuyProfit = 0.;
+   double totalSellProfit = 0;
+   double minBuyOpenPrice = NA;
+
+   for (int i=totalBuyPositions-1; i>=0; i--){
+      totalBuyProfit += buyPositions[i].profit;
+   }
+   for (int i=totalSellPositions-1; i>=0; i--){
+      totalSellProfit += sellPositions[i].profit;
+   }
+
+   if (totalBuyPositions > 0 && totalSellPositions == 0){
+      breakEvenPrice = NormPrice(totalBuyWagedOpenPrice / totalBuyLots);
+   } else if(totalSellPositions > 0 && totalBuyPositions == 0){
+      breakEvenPrice = NormPrice(totalSellWagedOpenPrice / totalSellLots);
+   } else if (totalBuyPositions > 0 && totalSellPositions > 0 && totalBuyPositions != totalSellPositions){
+     // equation calculated from: (1750-BE)*0,01 - (1800-BE)*0,03 == 0) => BE = 1825
+      double buyAvgPrice = totalBuyWagedOpenPrice / totalBuyLots;
+      double sellAvgPrice = totalSellWagedOpenPrice / totalSellLots;
+      breakEvenPrice = MathAbs(NormPrice((buyAvgPrice*totalBuyLots - sellAvgPrice*totalSellLots) / (totalSellLots - totalBuyLots)));
+   } else {
+      breakEvenPrice = 0;
+   }
+
+   comment += "BUY: " + totalBuyPositions + ", Pending BUY: " + totalBuyLimitPositions + ", SELL: " + totalSellPositions + " BE: " + breakEvenPrice + ", Profit: " + DoubleToStr(totalBuyProfit + totalSellProfit,2) ;
+
 }
 
 void ArrayAppend(Position & array[], Position & position){
@@ -167,7 +209,6 @@ void updateTakeProfitsGlobally() {
          totalLots += position.lots;
          totalWagedOpenPrice += position.openPrice * position.lots;
       }
-
 
       //OrderCommission(); OrderSwap();
       //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
@@ -224,20 +265,7 @@ void calculate()
 }
 
 void doubleBuyLogic(){
-   double totalBuyProfit = 0.;
-   double totalSellProfit = 0;
-   double minBuyOpenPrice = NA;
-
-   for (int i=totalBuyPositions-1; i>=0; i--){
-      totalBuyProfit += buyPositions[i].profit;
-   }
-   for (int i=totalSellPositions-1; i>=0; i--){
-      totalSellProfit += sellPositions[i].profit;
-   }
-
    double askPrice = MarketInfo(Symbol(), MODE_ASK);
-
-   comment += ", BUY: " + totalBuyPositions + ", Pending BUY: " + totalBuyLimitPositions + ", SELL: " + totalSellPositions + ", Profit: " + DoubleToStr(totalBuyProfit + totalSellProfit,2) ;
 
    // Place initial Orders
    if (totalBuyPositions + totalBuyLimitPositions == 0) {
@@ -310,7 +338,7 @@ void stochDoubleSellLogic(){
 
       bool canOpenMoreSellOrders = totalSellPositions < totalBuyPositions + maxExtraOppositeOrders;
       string stochSignal = stochSignal(PERIOD_M15);
-      comment += "NextSell: " + nextSellPrice + (canOpenMoreSellOrders ? "+" : "-") + ", Stoch: " + stochSignal;
+      comment += " NextSell: " + nextSellPrice + (canOpenMoreSellOrders ? "+" : "-") + ", Stoch: " + stochSignal;
       if (canOpenMoreSellOrders && bidPrice > maxBoughtPrice && bidPrice >= nextSellPrice && stochSignal == "sell") {
          openSellOrder();
       }
