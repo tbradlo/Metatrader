@@ -26,11 +26,8 @@ input int stoch_K_Period = 14;
 input int stochTop = 79;
 input int stochBtm = 20;
 
-//input double maxLoss = 10000.0; // Closes all positions after total loss bigger than maxLoss
-
 // internal params
 double NA = 999999999;
-bool bigDropAlarm = false;
 string comment = "";
 double accumulateFromPrice = 0;
 
@@ -85,15 +82,6 @@ void OnDeinit(const int reason)
    DeleteButtons();
   }
 
-
-//+------------------------------------------------------------------+
-//|  2022.09.12 22:52 Close SELL orders one by one if needed
-//|  2022.09.13 07:40 Open only one order at start
-//|  2022.09.13 13:24 Handle sell only exist scenario (when BUYs closed manually as Manual take profit)
-//|  2022.09.28 22:31 Piramide if not having enough buy/sell orders
-//|  2022.10.02 19:27 Close extra orders using TakeProfit/Maker orders + onTrade + Position class
-//|  TODO: if alarm close everything on 0      -> 14.09.2022 case, GOLD+USD BEZ SELLA
-//|
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
@@ -135,10 +123,6 @@ void readPositions(){
    totalBuyPositions = ArraySize(buyPositions);
    totalBuyLimitPositions = ArraySize(buyLimitPositions);
    totalSellPositions = ArraySize(sellPositions);
-
-   if (totalBuyPositions <= positionsToOpen){
-      bigDropAlarm = false;
-   }
 }
 
 void ArrayAppend(Position & array[], Position & position){
@@ -254,12 +238,6 @@ void doubleBuyLogic(){
    double askPrice = MarketInfo(Symbol(), MODE_ASK);
 
    comment += ", BUY: " + totalBuyPositions + ", Pending BUY: " + totalBuyLimitPositions + ", SELL: " + totalSellPositions + ", Profit: " + DoubleToStr(totalBuyProfit + totalSellProfit,2) ;
-
-   //double totalProfit = totalBuyProfit + totalSellProfit; // close all on alarm logic
-   //if (bigDropAlarm && totalProfit > 0 || totalProfit < -1 * maxLoss){
-    //  closeAllOrders();
-   //   return;
-   //}
 
    // Place initial Orders
    if (totalBuyPositions + totalBuyLimitPositions == 0) {
