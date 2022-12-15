@@ -1,0 +1,220 @@
+#property strict
+
+/**
+    v1, 15 Dec 2022
+    Prototype of Grid Bot - Like 3Commas Grid Bot
+    Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
+    It has some bugs (like pyramiding  not working)
+    Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
+    Profitable but requires big depo and needs a few additions.
+*/
+
+#include <stdlib.mqh>
+#include <ArraySortStruct.mqh>
+
+input string expertName = "GRID buy*2";
+input int expertId = 8;
+
+input double takeProfitPoints = 500;
+input double positionsSize = 0.01; //how big positions to open
+input int maxPositions = 100;
+input double inNextPositionByPoints = 100;
+input double inAccumulateFromPrice = 0.;
+input int positionLimitsToOpen = 15;
+
+input bool piramide = false;
+
+
+string comment = "";
+
+class Position
+  {
+public:
+   int ticket;
+   double lots;
+   double profit;
+   double openPrice;
+   double stopLoss;
+   //--- Default constructor
+                     Position(){ ticket = -1; lots = 0.; profit = 0.; openPrice = 0.; stopLoss = 0.;};
+   //--- Parametric constructor
+   Position(int p_ticket, double p_lots, double p_profit, double p_openPrice, double p_stopLoss){
+      ticket = p_ticket;
+      lots = p_lots;
+      profit = p_profit;
+      openPrice = p_openPrice;
+      stopLoss = p_stopLoss;
+   }
+};
+
+Position openPositions[]; //sorted by openPrice Asc
+Position limitPositions[];
+
+int totalOpenedPositions = 0;
+int totalLimitPositions = 0;
+
+double nextPositionByPoints = 0.;
+double accumulateFromPrice = 0.;
+bool inactive = false;
+
+
+extern int Corner = 2;
+extern int Move_X = 0;
+extern int Move_Y = 0;
+extern string B00001 = "============================";
+extern int Button_Width = 30;
+extern string Font_Type = "Arial Bold";
+extern color Font_Color = clrWhite;
+extern int Font_Size = 8;
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnInit(void)
+  {
+
+     double askPrice = MarketInfo(Symbol(), MODE_ASK);
+     accumulateFromPrice = inAccumulateFromPrice != 0.? inAccumulateFromPrice : askPrice;
+     nextPositionByPoints = inNextPositionByPoints;
+
+   OnTick();
+  }
+
+void OnDeinit(const int reason)
+  {
+  }
+
+
+//+------------------------------------------------------------------+
+
+//|
+//+------------------------------------------------------------------+
+void OnTick(void)
+  {
+    double bidPrice = MarketInfo(Symbol(), MODE_BID);
+
+    comment = "";
+    readPositions();
+
+    calculate();
+
+    if (ordersTotal != totalOpenedPositions){
+      OnTrade();
+      ordersTotal = totalOpenedPositions;
+    }
+
+    Comment(comment);
+}
+
+void readPositions(){
+    ArrayFree(openPositions);
+    ArrayFree(limitPositions);
+
+   for (int i = OrdersTotal() - 1; i >= 0; i--) {
+      if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && (expertId == OrderMagicNumber() || expertId == 0) && _Symbol == OrderSymbol()) {
+         Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice(), OrderStopLoss());
+         if (OrderType() == OP_BUY) {
+            ArrayAppend(openPositions, p);
+         } else if (OrderType() == OP_BUYLIMIT){
+            ArrayAppend(limitPositions, p);
+         }
+         delete p;
+      }
+   }
+   ArraySortStruct(openPositions, openPrice);
+   ArraySortStruct(limitPositions, openPrice);
+
+   totalOpenedPositions = ArraySize(openPositions);
+   totalLimitPositions = ArraySize(limitPositions);
+}
+
+void OnTrade(){
+
+}
+
+void ArrayAppend(Position & array[], Position & position){
+   int newSize = ArraySize(array) + 1;
+   ArrayResize(array, newSize, 10);
+   array[newSize-1] = position;
+}
+
+int ordersTotal = OrdersTotal();
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void calculate()
+{
+   openOrdersLogic();
+}
+
+void openOrdersLogic(){
+   double totalProfit = 0.;
+
+   for (int i=totalOpenedPositions-1; i>=0; i--){
+      totalProfit += openPositions[i].profit;
+   }
+
+   comment += ", BUY: " + totalOpenedPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToStr(totalProfit,2);
+
+   double askPrice = MarketInfo(Symbol(), MODE_ASK);
+   // Place initial Orders
+   if (totalOpenedPositions + totalLimitPositions  == 0) {
+      if (accumulateFromPrice == 0. || askPrice <= accumulateFromPrice){
+         openOrder(OP_BUY);
+      } else {
+         openOrder(OP_BUYLIMIT, accumulateFromPrice);
+      }
+
+   } else  {
+      double nextOpenPrice;
+      // Append new BuyLimits if missing
+
+      int toOpenCnt = positionLimitsToOpen - totalLimitPositions;
+      if (totalLimitPositions > 0){
+         nextOpenPrice = limitPositions[0].openPrice - nextPositionByPoints;
+         if (totalOpenedPositions > 0){
+            int buyGapSize = MathRound((openPositions[0].openPrice - limitPositions[totalLimitPositions-1].openPrice) / nextPositionByPoints) - 1;
+            if (buyGapSize > 0){
+               //there is a buyLimit gap caused by some best buy orders closed as a rescue
+               nextOpenPrice = openPositions[0].openPrice - nextPositionByPoints;
+               toOpenCnt = buyGapSize;
+            }
+         }
+      } else {
+         nextOpenPrice = openPositions[0].openPrice - nextPositionByPoints;
+      }
+
+      nextOpenPrice = MathMin(nextOpenPrice, askPrice); //current price much lower scenario
+      for (int j=0; j < toOpenCnt; j++) {
+         openOrder(OP_BUYLIMIT, nextOpenPrice);
+         nextOpenPrice -= nextPositionByPoints;
+      }
+   }
+
+     if (piramide && totalOpenedPositions > 0 && totalLimitPositions > 0) {
+      // Price goes in profitable dicection (piramide) scenario, open opposite orders as well if too few of them
+
+      double nextPiramideOpenPrice = NormPrice(openPositions[totalOpenedPositions-1].openPrice + nextPositionByPoints);
+      if (askPrice >= nextPiramideOpenPrice) {
+         openOrder(OP_BUY);
+      }
+   }
+}
+
+void openOrder(int type, double price = 0){
+      if (type == OP_BUY || type == OP_BUYLIMIT){
+         if (price == 0) price = Ask;
+         OrderSend(_Symbol, type, positionsSize, price, 0.001*Ask, 0, NormPrice(price + takeProfitPoints), expertName + " " + expertId, expertId, 0, Green);
+      } else if (type == OP_SELL || type == OP_SELLLIMIT) {
+         if (price == 0) price = Bid;
+         OrderSend(_Symbol, type, positionsSize, price, 0.01*Bid, 0, 0, expertName + " " + expertId, expertId, 0, Red);
+      }
+}
+
+
+double NormPrice(double price) {
+   double tickSize = MarketInfo(Symbol(), MODE_TICKSIZE);
+   return( MathRound(price/tickSize)*tickSize );
+}
+
