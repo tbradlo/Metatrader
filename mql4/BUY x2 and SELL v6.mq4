@@ -1,4 +1,4 @@
-/** version v6.1 15 Dec 2022 */
+/** version v6.2 16 Dec 2022 */
 
 #property strict
 
@@ -114,7 +114,8 @@ void readPositions(){
 
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && (expertId == OrderMagicNumber() || expertId == 0) && _Symbol == OrderSymbol()) {
-         Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice());
+         //calculate commision twice since sell commision will be similar to buy one
+         Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit() + OrderSwap() + 2 * OrderCommission(), OrderOpenPrice());
          if (OrderType() == OP_SELL) {
             ArrayAppend(sellPositions, p);
             totalProfit += p.profit;
