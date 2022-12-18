@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.2, 18 Dec 2022
+    v0.3, 18 Dec 2022
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
