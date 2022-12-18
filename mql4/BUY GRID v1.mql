@@ -1,8 +1,8 @@
 #property strict
 
 /**
-    v1, 15 Dec 2022
-    Prototype of Grid Bot - Like 3Commas Grid Bot
+    v0.2, 18 Dec 2022
+    Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     It has some bugs (like pyramiding  not working)
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -15,11 +15,12 @@
 input string expertName = "GRID buy*2";
 input int expertId = 8;
 
-input double takeProfitPoints = 500;
-input double positionsSize = 0.01; //how big positions to open
+input double takeProfitPoints = 20;
+input double inPositionsSize = 0; //how big positions to open
 input int maxPositions = 100;
-input double inNextPositionByPoints = 100;
-input double inAccumulateFromPrice = 0.;
+input double inNextPositionByPoints = 10;
+input double maxSellPrice = 0.;
+input double minBuyPrice = 10000.; // Price at which Account Margin will be 100% (used for positionSize calculation)
 input int positionLimitsToOpen = 15;
 
 input bool piramide = false;
@@ -54,8 +55,8 @@ int totalOpenedPositions = 0;
 int totalLimitPositions = 0;
 
 double nextPositionByPoints = 0.;
-double accumulateFromPrice = 0.;
 bool inactive = false;
+double positionSize = 0;
 
 
 extern int Corner = 2;
@@ -72,12 +73,11 @@ extern int Font_Size = 8;
 //+------------------------------------------------------------------+
 void OnInit(void)
   {
-
+     
      double askPrice = MarketInfo(Symbol(), MODE_ASK);
-     accumulateFromPrice = inAccumulateFromPrice != 0.? inAccumulateFromPrice : askPrice;
      nextPositionByPoints = inNextPositionByPoints;
-
-   OnTick();
+     positionSize = inPositionsSize > 0 ? inPositionsSize : calculatePositionSize();
+     OnTick();
   }
 
 void OnDeinit(const int reason)
@@ -95,25 +95,25 @@ void OnTick(void)
 
     comment = "";
     readPositions();
-
+    
     calculate();
-
+    
     if (ordersTotal != totalOpenedPositions){
       OnTrade();
       ordersTotal = totalOpenedPositions;
     }
-
+    
     Comment(comment);
 }
-
+  
 void readPositions(){
     ArrayFree(openPositions);
     ArrayFree(limitPositions);
-
+   
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && (expertId == OrderMagicNumber() || expertId == 0) && _Symbol == OrderSymbol()) {
          Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice(), OrderStopLoss());
-         if (OrderType() == OP_BUY) {
+         if (OrderType() == OP_BUY) {       
             ArrayAppend(openPositions, p);
          } else if (OrderType() == OP_BUYLIMIT){
             ArrayAppend(limitPositions, p);
@@ -123,18 +123,18 @@ void readPositions(){
    }
    ArraySortStruct(openPositions, openPrice);
    ArraySortStruct(limitPositions, openPrice);
-
+   
    totalOpenedPositions = ArraySize(openPositions);
    totalLimitPositions = ArraySize(limitPositions);
-}
-
-void OnTrade(){
-
+}  
+  
+void OnTrade(){   
+  calculatePositionSize();
 }
 
 void ArrayAppend(Position & array[], Position & position){
    int newSize = ArraySize(array) + 1;
-   ArrayResize(array, newSize, 10);
+   ArrayResize(array, newSize, 10);          
    array[newSize-1] = position;
 }
 
@@ -155,28 +155,23 @@ void openOrdersLogic(){
       totalProfit += openPositions[i].profit;
    }
 
-   comment += ", BUY: " + totalOpenedPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToStr(totalProfit,2);
+   comment += ", BUY: " + totalOpenedPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToStr(totalProfit,2) + " EQ: " + AccountEquity();
 
    double askPrice = MarketInfo(Symbol(), MODE_ASK);
    // Place initial Orders
    if (totalOpenedPositions + totalLimitPositions  == 0) {
-      if (accumulateFromPrice == 0. || askPrice <= accumulateFromPrice){
-         openOrder(OP_BUY);
-      } else {
-         openOrder(OP_BUYLIMIT, accumulateFromPrice);
-      }
-
-   } else  {
+      openOrder(OP_BUY);
+   } else  { 
       double nextOpenPrice;
-      // Append new BuyLimits if missing
-
+      // Append new BuyLimits if missing      
+     
       int toOpenCnt = positionLimitsToOpen - totalLimitPositions;
       if (totalLimitPositions > 0){
          nextOpenPrice = limitPositions[0].openPrice - nextPositionByPoints;
          if (totalOpenedPositions > 0){
             int buyGapSize = MathRound((openPositions[0].openPrice - limitPositions[totalLimitPositions-1].openPrice) / nextPositionByPoints) - 1;
             if (buyGapSize > 0){
-               //there is a buyLimit gap caused by some best buy orders closed as a rescue
+               //there is a buyLimit gap caused by some best buy orders closed as a rescue 
                nextOpenPrice = openPositions[0].openPrice - nextPositionByPoints;
                toOpenCnt = buyGapSize;
             }
@@ -191,7 +186,7 @@ void openOrdersLogic(){
          nextOpenPrice -= nextPositionByPoints;
       }
    }
-
+   
      if (piramide && totalOpenedPositions > 0 && totalLimitPositions > 0) {
       // Price goes in profitable dicection (piramide) scenario, open opposite orders as well if too few of them
 
@@ -203,13 +198,19 @@ void openOrdersLogic(){
 }
 
 void openOrder(int type, double price = 0){
-      if (type == OP_BUY || type == OP_BUYLIMIT){
-         if (price == 0) price = Ask;
-         OrderSend(_Symbol, type, positionsSize, price, 0.001*Ask, 0, NormPrice(price + takeProfitPoints), expertName + " " + expertId, expertId, 0, Green);
-      } else if (type == OP_SELL || type == OP_SELLLIMIT) {
-         if (price == 0) price = Bid;
-         OrderSend(_Symbol, type, positionsSize, price, 0.01*Bid, 0, 0, expertName + " " + expertId, expertId, 0, Red);
-      }
+   if (positionSize == 0){
+       calculatePositionSize();
+   }
+   if (positionSize == -1){
+      return;
+   }
+   if (type == OP_BUY || type == OP_BUYLIMIT){
+      if (price == 0) price = Ask;
+         OrderSend(_Symbol, type, positionSize, price, 0.001*Ask, 0, NormPrice(price + takeProfitPoints), expertName + " " + expertId, expertId, 0, Green);
+   } else if (type == OP_SELL || type == OP_SELLLIMIT) {
+      if (price == 0) price = Bid;
+         OrderSend(_Symbol, type, positionSize, price, 0.01*Bid, 0, 0, expertName + " " + expertId, expertId, 0, Red);
+   }
 }
 
 
@@ -218,3 +219,42 @@ double NormPrice(double price) {
    return( MathRound(price/tickSize)*tickSize );
 }
 
+double calculatePositionSize(){
+      double bidPrice = MarketInfo(Symbol(), MODE_BID);
+      double askPrice = MarketInfo(Symbol(), MODE_ASK);
+      double pointValuePerLot = MarketInfo(_Symbol, MODE_TICKVALUE) / MarketInfo(_Symbol, MODE_TICKSIZE);
+      double maxAdditionalLoss = 0;
+      double totalOpenedLots = 0;
+      for (int i=0; i < totalOpenedPositions; i++){
+         totalOpenedLots = openPositions[i].lots;
+      }
+      maxAdditionalLoss = (minBuyPrice-bidPrice) * totalOpenedLots * pointValuePerLot;
+      comment += " Max additional loss: " + maxAdditionalLoss + "@" + minBuyPrice;
+      
+      double equityAtLowestPrice = AccountEquity()+maxAdditionalLoss;
+      double marginRequredAtLowestPrice = MarginAtMinBuyPrice(totalOpenedLots, pointValuePerLot);
+
+      comment += " equityAtLowestPrice: " + equityAtLowestPrice + " marginRequredAtLowestPrice: " + marginRequredAtLowestPrice ; 
+
+      double nextOpenPrice = totalOpenedPositions > 0 ? openPositions[0].openPrice - nextPositionByPoints : askPrice;
+      int positionsToOpen = MathFloor((nextOpenPrice - minBuyPrice)/nextPositionByPoints + 1);
+      
+      comment += " positionsToOpen: " + positionsToOpen;
+      
+      // 9936-2 = margin(0.01*635) + (12352-6000)*0.01*635*1
+      // 9934 = 0.002*635*1*6000/30 + 6352*0.002*635*1
+      // (9936-2) / (635*1*6000/30 + 6352*635*1) = 0.02
+      // equityAtLowestPrice - marginRequredAtLowestPrice = marginRequredAtLowestPrice(newPositionsSize? * positionsToOpen)+ (askPrice-minBuyPrice) * newPositionsSize? * positionsToOpen * pointValuePerLot
+      // = >
+      double newPositionsSize = (equityAtLowestPrice - marginRequredAtLowestPrice) / (positionsToOpen * pointValuePerLot * minBuyPrice / AccountLeverage() + ((askPrice-minBuyPrice)*positionsToOpen*pointValuePerLot));
+      newPositionsSize = MathFloor(newPositionsSize / MarketInfo(_Symbol, MODE_LOTSTEP)) * MarketInfo(_Symbol, MODE_LOTSTEP);
+      
+      positionSize = newPositionsSize == 0 ? -1 : newPositionsSize;     
+      comment += " NewPositionSize: " + positionSize + " lotstep: " + MarketInfo(_Symbol, MODE_LOTSTEP);
+      return positionSize;
+}
+
+double MarginAtMinBuyPrice(double lots, double pointValuePerLot)
+{
+   return lots * pointValuePerLot * minBuyPrice / AccountLeverage();
+}
