@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.3, 18 Dec 2022
+    v0.4, 19 Dec 2022
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -163,6 +163,9 @@ void openOrdersLogic(){
 
    for (int i=totalBuyPositions-1; i>=0; i--){
       totalProfit += buyPositions[i].profit;
+   }
+   for (int i=totalSellPositions-1; i>=0; i--){
+      totalProfit += sellPositions[i].profit;
    }
 
    comment += ", SELL: " + totalSellPositions + ", BUY: " + totalBuyPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToStr(totalProfit,2) + " EQ: " + DoubleToStr(AccountEquity(),2);
