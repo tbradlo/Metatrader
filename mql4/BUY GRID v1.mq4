@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.4, 19 Dec 2022
+    v0.5, 20 Dec 2022
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -67,13 +67,22 @@ double nextPositionByPoints = 0.;
 bool inactive = false;
 double positionSize = 0;
 
+extern int Corner = 2;
+extern int Move_X = 0;
+extern int Move_Y = 0;
+extern string B00001 = "============================";
+extern int Button_Width = 30;
+extern string Font_Type = "Arial Bold";
+extern color Font_Color = clrWhite;
+extern int Font_Size = 8;
+
 
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
 void OnInit(void)
   {
-
+     CreateButtons();
      double askPrice = MarketInfo(Symbol(), MODE_ASK);
      nextPositionByPoints = inNextBuyPositionByPoints;
      positionSize = inPositionsSize > 0 ? inPositionsSize : calculatePositionSize();
@@ -82,6 +91,7 @@ void OnInit(void)
 
 void OnDeinit(const int reason)
   {
+    DeleteButtons();
   }
 
 
@@ -347,3 +357,80 @@ string stochSignal(int period) {
       }
     return signal;
 }
+
+void OnChartEvent (const int id, const long &lparam, const double &dparam, const string &action)
+    {
+     ResetLastError();
+     if (id == CHARTEVENT_OBJECT_CLICK) {if (ObjectType (action) == OBJ_BUTTON) {ButtonPressed (0, action);}}
+    }
+
+
+void ButtonPressed (const long chartID, const string action)
+    {
+     ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrBlack); // button pressed
+     if (action == "SellOne_btn") SellOne_Button (action);
+     Sleep (2000);
+     ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrYellow); // button unpressed
+     ObjectSetInteger (chartID, action, OBJPROP_STATE, false); // button unpressed
+     ChartRedraw();
+    }
+
+int SellOne_Button (const string action)
+  {
+   openOrder(OP_SELL);
+   return(0);
+  }
+
+ void CreateButtons()
+     {
+      int Button_Height = (int)(Font_Size*2.8);
+      if (!ButtonCreate (0, "SellOne_btn", 0, 002 + 000 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
+      ChartRedraw();
+     }
+
+ bool ButtonCreate (const long chart_ID = 0, const string name = "Button", const int sub_window = 0, const int x = 0, const int y = 0, const int width = 500,
+                    const int height = 18, int corner = 0, const string text = "button", const string font = "Arial Bold",
+                    const int font_size = 10, const color clr = clrBlack, const color back_clr = C'170,170,170', const color border_clr = clrNONE,
+                    const bool state = false, const bool back = false, const bool selection = false, const bool hidden = true, const long z_order = 0)
+   {
+    ResetLastError();
+    if (!ObjectCreate (chart_ID,name, OBJ_BUTTON, sub_window, 0, 0))
+      {
+       Print (__FUNCTION__, " : failed to create the button! Error code : ", GetLastError());
+       return(false);
+      }
+    ObjectSetInteger (chart_ID, name, OBJPROP_XDISTANCE, x);
+    ObjectSetInteger (chart_ID, name, OBJPROP_YDISTANCE, y);
+    ObjectSetInteger (chart_ID, name, OBJPROP_XSIZE, width);
+    ObjectSetInteger (chart_ID, name, OBJPROP_YSIZE, height);
+    ObjectSetInteger (chart_ID, name, OBJPROP_CORNER, corner);
+    ObjectSetInteger (chart_ID, name, OBJPROP_FONTSIZE, font_size);
+    ObjectSetInteger (chart_ID, name, OBJPROP_COLOR, clr);
+    ObjectSetInteger (chart_ID, name, OBJPROP_BGCOLOR, back_clr);
+    ObjectSetInteger (chart_ID, name, OBJPROP_BORDER_COLOR, border_clr);
+    ObjectSetInteger (chart_ID, name, OBJPROP_BACK, back);
+    ObjectSetInteger (chart_ID, name, OBJPROP_STATE, state);
+    ObjectSetInteger (chart_ID, name, OBJPROP_SELECTABLE, selection);
+    ObjectSetInteger (chart_ID, name, OBJPROP_SELECTED, selection);
+    ObjectSetInteger (chart_ID, name, OBJPROP_HIDDEN, hidden);
+    ObjectSetInteger (chart_ID, name, OBJPROP_ZORDER,z_order);
+    ObjectSetString  (chart_ID, name, OBJPROP_TEXT, text);
+    ObjectSetString  (chart_ID, name, OBJPROP_FONT, font);
+    return(true);
+   }
+
+  void DeleteButtons()
+     {
+      ButtonDelete (0, "SellOne_btn");
+     }
+
+ bool ButtonDelete (const long chart_ID=0, const string name="Button")
+   {
+    ResetLastError();
+    if (!ObjectDelete (chart_ID,name))
+      {
+       Print (__FUNCTION__, ": Failed to delete the button! Error code = ", GetLastError());
+       return(false);
+      }
+    return(true);
+   }
