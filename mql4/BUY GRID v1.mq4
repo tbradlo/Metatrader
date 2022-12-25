@@ -1,11 +1,11 @@
 #property strict
 
 /**
-    v0.5, 20 Dec 2022
+    v0.6, 25 Dec 2022
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
-    Profitable but requires big depo.
+    Profitable but requires a big depo.
 */
 
 #include <stdlib.mqh>
@@ -56,11 +56,9 @@ public:
 
 Position buyPositions[]; //sorted by openPrice Asc
 Position buyPositionsTp[]; //sorted by takeProfit Asc
-Position limitPositions[];
 Position sellPositions[];
 
 int totalBuyPositions = 0;
-int totalLimitPositions = 0;
 int totalSellPositions = 0;
 
 double nextPositionByPoints = 0.;
@@ -119,7 +117,6 @@ void OnTick(void)
 
 void readPositions(){
     ArrayFree(buyPositions);
-    ArrayFree(limitPositions);
     ArrayFree(sellPositions);
     ArrayFree(buyPositionsTp);
 
@@ -129,8 +126,6 @@ void readPositions(){
          if (OrderType() == OP_BUY) {
             ArrayAppend(buyPositions, p);
             ArrayAppend(buyPositionsTp, p);
-         } else if (OrderType() == OP_BUYLIMIT){
-            ArrayAppend(limitPositions, p);
          } if (OrderType() == OP_SELL) {
             ArrayAppend(sellPositions, p);
          }
@@ -139,12 +134,23 @@ void readPositions(){
    }
    ArraySortStruct(buyPositions, openPrice);
    ArraySortStruct(buyPositionsTp, takeProfit);
-   ArraySortStruct(limitPositions, openPrice);
    ArraySortStruct(sellPositions, openPrice);
 
    totalBuyPositions = ArraySize(buyPositions);
    totalSellPositions = ArraySize(sellPositions);
-   totalLimitPositions = ArraySize(limitPositions);
+
+   double totalProfit = 0.;
+   double totalSellLots = 0.;
+
+   for (int i=totalBuyPositions-1; i>=0; i--){
+      totalProfit += buyPositions[i].profit;
+   }
+   for (int i=totalSellPositions-1; i>=0; i--){
+      totalProfit += sellPositions[i].profit;
+      totalSellLots += sellPositions[i].lots;
+   }
+
+   comment += ", SELL: " + totalSellPositions + "(" + totalSellLots + " lots), BUY: " + totalBuyPositions + ", Profit: " + DoubleToStr(totalProfit,2) + " Balance: " + DoubleToStr(AccountBalance(),2) + " EQ: " + DoubleToStr(AccountEquity(),2);
 }
 
 void OnTrade(){
@@ -169,20 +175,10 @@ void calculate()
 }
 
 void openOrdersLogic(){
-   double totalProfit = 0.;
-
-   for (int i=totalBuyPositions-1; i>=0; i--){
-      totalProfit += buyPositions[i].profit;
-   }
-   for (int i=totalSellPositions-1; i>=0; i--){
-      totalProfit += sellPositions[i].profit;
-   }
-
-   comment += ", SELL: " + totalSellPositions + ", BUY: " + totalBuyPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToStr(totalProfit,2) + " EQ: " + DoubleToStr(AccountEquity(),2);
 
    double askPrice = MarketInfo(Symbol(), MODE_ASK);
    // Place initial Orders
-   if (totalBuyPositions + totalLimitPositions  == 0) {
+   if (totalBuyPositions == 0) {
       if (sellPositionsToOpen > 0){
          openOrder(OP_SELL);
       }
@@ -210,16 +206,13 @@ void openBuyOrders(){
 
       int closestPosition = -1;
       int nextTpPosition = -1;
-      comment += "X ";
       for (int i=0; i<totalBuyPositions; i++){
          Position position = buyPositionsTp[i];
          if (position.takeProfit == closestTakeProfit){ // TP exists
             closestPosition = i;
             nextTpPosition = i+1;
-            comment += "Y ";
             break;
          } else if (position.takeProfit > closestTakeProfit){ // bigger TP exist
-            comment += "Z ";
             nextTpPosition = i;
             break;
          }
@@ -235,7 +228,6 @@ void openBuyOrders(){
       } else {
          //check if there is any TP gap for the buffer
          double nextTp = closestTakeProfit + nextPositionByPoints;
-         comment += " NEXT TP : " + nextTp;
          for (int i=nextTpPosition; i<totalBuyPositions && nextTp <= maxBufferedTp; i++){
             Position position = buyPositionsTp[i];
             if (position.takeProfit > nextTp){
@@ -326,7 +318,7 @@ void stochDoubleSellLogic(){
       double bidPrice = MarketInfo(Symbol(), MODE_BID);
       double nextSellPrice = totalSellPositions == 0 ? bidPrice : NormPrice(sellPositions[totalSellPositions-1].openPrice + nextSellPositionByPoints);
 
-      comment += "NextSell: " + nextSellPrice;
+      comment += " NextSell: " + nextSellPrice;
       if (bidPrice >= nextSellPrice && stochSignal(PERIOD_M15) == "sell") {
          openOrder(OP_SELL);
       }
