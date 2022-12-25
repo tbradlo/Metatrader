@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.6, 25 Dec 2022
+    v0.7, 25 Dec 2022
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -154,7 +154,7 @@ void readPositions(){
 }
 
 void OnTrade(){
-  //calculatePositionSize();
+   updateTakeProfitsGlobally();
 }
 
 void ArrayAppend(Position & array[], Position & position){
@@ -322,6 +322,31 @@ void stochDoubleSellLogic(){
       if (bidPrice >= nextSellPrice && stochSignal(PERIOD_M15) == "sell") {
          openOrder(OP_SELL);
       }
+   }
+}
+
+void updateTakeProfitsGlobally() {
+   // update SELL take profits if owns more SELLs than expected
+   if (totalSellPositions > sellPositionsToOpen){
+      double totalLots = 0.0;
+      double totalWagedOpenPrice = 0.0;
+
+      // worst positions to close
+      for (int i=0; i<totalSellPositions-sellPositionsToOpen; i++){
+         Position position = sellPositions[i];
+         totalLots += position.lots;
+         totalWagedOpenPrice += position.openPrice * position.lots;
+      }
+
+      //OrderCommission(); OrderSwap();
+      //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
+
+      double takeProfitPrice = NormPrice(totalWagedOpenPrice / totalLots);
+      for (int i=0; i<totalSellPositions-sellPositionsToOpen; i++){
+         Position position = sellPositions[i];
+         OrderModify(position.ticket, 0., 0., takeProfitPrice, 0);
+      }
+      comment += " SellTP: " + takeProfitPrice; //13169
    }
 }
 
