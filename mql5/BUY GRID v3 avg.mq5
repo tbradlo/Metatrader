@@ -111,7 +111,7 @@ void OnInit(void)
    double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    nextPositionByPoints = inNextBuyPositionByPoints;
    positionSize = inPositionsSize > 0 ? inPositionsSize : calculatePositionSize();
-   OnTick();
+   //OnTick();
   }
 
 //+------------------------------------------------------------------+
@@ -136,13 +136,6 @@ void OnTick(void)
    readPositions();
 
    calculate();
-
-   if(ordersTotal != totalBuyPositions + totalSellPositions)
-     {
-      OnTrade();
-      ordersTotal = totalBuyPositions + totalSellPositions;
-     }
-
 
    WriteLabel("btmComment", headerLine);
    WriteLabel("btmOwns", ownsLine);
@@ -228,8 +221,9 @@ int ordersTotal = OrdersTotal();
 //+------------------------------------------------------------------+
 void calculate()
   {
-   stochDoubleSellLogic();
-   openOrdersLogic();
+   if (!stochDoubleSellLogic()){
+      openOrdersLogic();
+   }
   }
 
 //+------------------------------------------------------------------+
@@ -245,6 +239,7 @@ void openOrdersLogic()
       if(totalSellPositions == 0 && sellPositionsToOpen > 0)
         {
          openOrder(ORDER_TYPE_SELL);
+         Print("sell opened");
         }
       openBuyOrders();
      }
@@ -287,14 +282,12 @@ void openBuyOrders()
            {
             closestPosition = i;
             nextTpPosition = i+1;
-            headerLine += "x1x";
             break;
            }
          else
             if(position.takeProfit > closestTakeProfit)   // bigger TP exist
               {
                nextTpPosition = i;
-               headerLine += "y2y";
                break;
               }
         }
@@ -447,7 +440,7 @@ double MarginAtMinBuyPrice(double lots, double pointValuePerLot)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void stochDoubleSellLogic()
+bool stochDoubleSellLogic()
   {
 //open SELL orders on SELL signal
    if(sellPositionsToOpen > 0)
@@ -459,8 +452,10 @@ void stochDoubleSellLogic()
       if(bidPrice >= nextSellPrice && stochSignal() == "sell")
         {
          openOrder(ORDER_TYPE_SELL);
+         return true;
         }
      }
+     return false;
   }
 
 //+------------------------------------------------------------------+
@@ -482,8 +477,16 @@ void updateTakeProfitsGlobally()
       double totalLots = bestPosition.lots + positionToClose.lots;
       double takeProfitPrice = NormPrice( (bestPosition.lots * bestPosition.openPrice + positionToClose.lots * positionToClose.openPrice)/totalLots );
 
-      m_trade.PositionModify(bestPosition.ticket, 0, takeProfitPrice);
-      m_trade.PositionModify(positionToClose.ticket, 0, takeProfitPrice);
+      if (bestPosition.takeProfit != takeProfitPrice){
+         Print("BEST SEll TP " + bestPosition.ticket + " " + bestPosition.openPrice + " " + bestPosition.takeProfit);
+         m_trade.PositionModify(bestPosition.ticket, 0, takeProfitPrice);
+         Print("BEST SEll TP DONE " + bestPosition.ticket + " " + bestPosition.openPrice + " " + bestPosition.takeProfit);
+      }
+      if (positionToClose.takeProfit != takeProfitPrice){
+         Print("worst SEll TP " + positionToClose.ticket + " " + positionToClose.openPrice + " " + positionToClose.takeProfit);
+         m_trade.PositionModify(positionToClose.ticket, 0, takeProfitPrice);
+         Print("worst SEll TP DONE " + positionToClose.ticket + " " + positionToClose.openPrice + " " + positionToClose.takeProfit);
+      }
       //OrderCommission(); OrderSwap();
       //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
 
@@ -492,7 +495,11 @@ void updateTakeProfitsGlobally()
          if(i != bestPositionIdx && i != positionToCloseIdx)
            {
             Position position = sellPositions[i];
-            m_trade.PositionModify(position.ticket, 0, 0);
+            if (position.takeProfit != 0.){
+               Print("Reset SEll TP " + position.ticket + " " + position.openPrice);
+               m_trade.PositionModify(position.ticket, 0, 0);
+               Print("Reset SEll TP DONE " + position.ticket + " " + position.openPrice);
+            }
            }
         }
       headerLine += " SellTP: " + takeProfitPrice; //13169
