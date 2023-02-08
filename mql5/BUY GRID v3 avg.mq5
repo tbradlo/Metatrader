@@ -45,6 +45,7 @@ input int stochBtm = 20;
 
 
 string headerLine = "";
+string ownsLine = "";
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -96,6 +97,8 @@ int handleStoch;
 //+------------------------------------------------------------------+
 void OnInit(void)
   {
+   CreateLabel("btmComment", 10, 15);
+   CreateLabel("btmOwns", 10, 30);
    int D_Period = 3;
    int Slowing = 3;
    handleStoch = iStochastic(_Symbol, PERIOD_M15,stoch_K_Period,D_Period,Slowing,MODE_SMA,STO_LOWHIGH);
@@ -129,6 +132,7 @@ void OnTick(void)
    double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
    headerLine = "";
+   ownsLine = "";
    readPositions();
 
    calculate();
@@ -139,7 +143,9 @@ void OnTick(void)
       ordersTotal = totalBuyPositions + totalSellPositions;
      }
 
-   Comment(headerLine);
+
+   WriteLabel("btmComment", headerLine);
+   WriteLabel("btmOwns", ownsLine);
   }
 
 
@@ -193,8 +199,8 @@ void readPositions()
       totalSellLots += sellPositions[i].lots;
      }
 
-   headerLine += ", SELL: " + totalSellPositions + "(" + totalSellLots + " lots), BUY: " + totalBuyPositions + "(" + totalBuyLots + " lots), Profit: "
-                 + DoubleToString(totalProfit,2) + " Balance: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2) + " EQ: " + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2) + " total: " + OrdersTotal();
+   headerLine += "Profit: " + DoubleToString(totalProfit,2) + " Balance: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2) + " EQ: " + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2);
+   ownsLine += "Sell: " + totalSellPositions + " / " + DoubleToString(totalSellLots,2) + " Buy: " + totalBuyPositions + " / " + DoubleToString(totalBuyLots,2) + " Total: " + (OrdersTotal() + PositionsTotal());
   }
 
 //+------------------------------------------------------------------+
@@ -449,7 +455,7 @@ void stochDoubleSellLogic()
       double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
       double nextSellPrice = totalSellPositions == 0 ? bidPrice : NormPrice(sellPositions[totalSellPositions-1].openPrice + nextSellPositionByPoints);
 
-      headerLine += " NextSell: " + nextSellPrice;
+      headerLine += " NextS: " + nextSellPrice;
       if(bidPrice >= nextSellPrice && stochSignal() == "sell")
         {
          openOrder(ORDER_TYPE_SELL);
@@ -619,3 +625,32 @@ bool ButtonDelete(const long chart_ID=0, const string name="Button")
    return(true);
   }
 //+------------------------------------------------------------------+
+void WriteLabel(string sName,string sValue)
+{
+   ObjectSetString(0,sName,OBJPROP_TEXT,sValue);
+}
+
+void CreateLabel(
+   const string objectName,
+   const int xDistance = 10,
+   const int yDistance = 10
+)
+  {
+//---  "btmComment",CORNER_LEFT_LOWER, ANCHOR_LEFT_LOWER, "Status",10,10
+   if(ObjectCreate(0,objectName,OBJ_LABEL, 0,0,0))
+     {
+      ObjectSetInteger(0,objectName,OBJPROP_CORNER,CORNER_LEFT_LOWER);
+      ObjectSetInteger(0,objectName,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
+      ObjectSetInteger(0,objectName,OBJPROP_FONTSIZE,8);
+      ObjectSetInteger(0,objectName,OBJPROP_XDISTANCE,xDistance);
+      ObjectSetInteger(0,objectName,OBJPROP_YDISTANCE,yDistance);
+     // ObjectSetInteger(0,"btmComment",OBJPROP_BGCOLOR,clrGreen);
+     // ObjectSetInteger(0,"btmComment",OBJPROP_COLOR, clrWhite);
+      //ObjectSetInteger(0,"btmComment",OBJPROP_XSIZE, 1000);
+     // ObjectSetInteger(0,"btmComment",OBJPROP_YSIZE, 10);
+      //ObjectSetString(0, objectName, OBJPROP_FONT,"Arial");
+     // ObjectSetInteger(0,"btmComment",OBJPROP_SELECTABLE,false);
+     }
+   else
+      Print("Failed to create the object OBJ_LABEL btmComment, Error code = ", GetLastError());
+  }
