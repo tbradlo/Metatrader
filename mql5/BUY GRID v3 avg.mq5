@@ -564,7 +564,7 @@ int SellOne_Button(const string action)
 void CreateButtons()
   {
    int Button_Height = (int)(Font_Size*2.8);
-   if(!ButtonCreate(0, "SellOne_btn", 0, 002 + 000 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
+   if(!ButtonCreate(0, "SellOne_btn", 0, 10 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
       return;
    ChartRedraw();
   }
@@ -583,6 +583,8 @@ bool ButtonCreate(const long chart_ID = 0, const string name = "Button", const i
       Print(__FUNCTION__, " : failed to create the button! Error code : ", GetLastError());
       return(false);
      }
+       ObjectSetInteger(chart_ID,name,OBJPROP_CORNER,CORNER_LEFT_LOWER);
+      ObjectSetInteger(chart_ID,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
    ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width);
