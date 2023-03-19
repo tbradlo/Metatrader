@@ -9,6 +9,9 @@
 #property strict
 
 #include <ArraySortStruct.mqh>
+#include <Generic\HashSet.mqh>
+
+
 
 #include <Trade\Trade.mqh>
 CTrade         m_trade;
@@ -28,7 +31,7 @@ input int expertId = 8;
 
 input double inPositionsSize = 0.1; //how big positions to open
 input double inNextBuyPositionByPoints = 20;
-input double sellBufferPoints = 10; // keep X points sell buffer to have sth to sell in case of rapid grow
+input int maxBuffer = 2; // keep X positions sell buffer to have sth to sell in case of rapid grow
 input double minBuyPrice = 10000.; // Price at which Account Margin will be 100% (used for positionSize calculation)
 
 input double takeProfitPoints = 30;
@@ -72,8 +75,9 @@ public:
   };
 
 Position buyPositions[]; //sorted by openPrice Asc
-Position buyPositionsTp[]; //sorted by takeProfit Asc
 Position sellPositions[];
+
+CHashSet<double> existingTakeProfits; //sortedTakeProfits Asc
 
 int totalBuyPositions = 0;
 int totalSellPositions = 0;
@@ -111,7 +115,7 @@ void OnInit(void)
    double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    nextPositionByPoints = inNextBuyPositionByPoints;
    positionSize = inPositionsSize > 0 ? inPositionsSize : calculatePositionSize();
-   //OnTick();
+//OnTick();
   }
 
 //+------------------------------------------------------------------+
@@ -149,7 +153,7 @@ void readPositions()
   {
    ArrayFree(buyPositions);
    ArrayFree(sellPositions);
-   ArrayFree(buyPositionsTp);
+   existingTakeProfits.Clear();
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
@@ -160,7 +164,7 @@ void readPositions()
          if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
            {
             ArrayAppend(buyPositions, p);
-            ArrayAppend(buyPositionsTp, p);
+            existingTakeProfits.Add(p.takeProfit);
            }
          if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL)
            {
@@ -171,7 +175,6 @@ void readPositions()
      }
 
    ArraySortStruct(buyPositions, openPrice);
-   ArraySortStruct(buyPositionsTp, takeProfit);
    ArraySortStruct(sellPositions, openPrice);
 
    totalBuyPositions = ArraySize(buyPositions);
@@ -221,9 +224,10 @@ int ordersTotal = OrdersTotal();
 //+------------------------------------------------------------------+
 void calculate()
   {
-   if (!stochDoubleSellLogic()){
+   if(!stochDoubleSellLogic())
+     {
       openOrdersLogic();
-   }
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -241,96 +245,23 @@ void openOrdersLogic()
          openOrder(ORDER_TYPE_SELL);
          Print("sell opened");
         }
-      openBuyOrders();
      }
-   else
-      if(buyPositionsTp[0].takeProfit - askPrice >= nextPositionByPoints)
-        {
-          openBuyOrders();
-        }
+
+    openBuyOrders();
   }
 
-//open one or two buy orders (in case of lack of "sell buffer")
+
 void openBuyOrders()
   {
-   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double closestClosePrice =  NormPrice(MathFloor(askPrice / nextPositionByPoints)*nextPositionByPoints);
+      double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextPositionByPoints) * nextPositionByPoints);
 
-   if(totalBuyPositions == 0)
-     {
-      //use standarized takeProfit positions (for buffer calculation purposes)
-      double takeProfitPrice = NormPrice(MathCeil((askPrice+takeProfitPoints) / nextPositionByPoints)*nextPositionByPoints);
-      openOrder(ORDER_TYPE_BUY, 0, takeProfitPrice);
-      if(sellBufferPoints > nextPositionByPoints)
-        {
-         openOrder(ORDER_TYPE_BUY, 0, takeProfitPrice+nextPositionByPoints);
-        }
-     }
-   else
-     {
-      double closestTakeProfit =  NormPrice(MathCeil((askPrice+takeProfitPoints) / nextPositionByPoints)*nextPositionByPoints); //11420
-      headerLine += " closest TP: " + closestTakeProfit;
-      double maxBufferedTp = closestTakeProfit + sellBufferPoints; //11460
-
-      headerLine += " bp0tp: " + buyPositionsTp[0].takeProfit;
-      int closestPosition = -1;
-      int nextTpPosition = -1;
-      for(int i=0; i<totalBuyPositions; i++)
-        {
-         Position position = buyPositionsTp[i];
-         if(position.takeProfit == closestTakeProfit)   // TP exists
-           {
-            closestPosition = i;
-            nextTpPosition = i+1;
-            break;
-           }
-         else
-            if(position.takeProfit > closestTakeProfit)   // bigger TP exist
-              {
-               nextTpPosition = i;
-               break;
-              }
-        }
-      headerLine += " nextTP: " + closestPosition;
-
-      if(closestPosition == -1)
-        {
-         headerLine += "SHOULD OPEN";
-         openOrder(ORDER_TYPE_BUY, 0, closestTakeProfit);
-        }
-
-      if(nextTpPosition == -1 && nextPositionByPoints < sellBufferPoints)
-        {
-         openOrder(ORDER_TYPE_BUY, 0, closestTakeProfit+nextPositionByPoints);
-        }
-      else
-        {
-         //check if there is any TP gap for the buffer
-         double nextTp = closestTakeProfit + nextPositionByPoints;
-         for(int i=nextTpPosition; i<totalBuyPositions && nextTp <= maxBufferedTp; i++)
-           {
-            Position position = buyPositionsTp[i];
-            if(position.takeProfit > nextTp)
-              {
-               headerLine += " G1";
-               openOrder(ORDER_TYPE_BUY, 0, nextTp);
-               return;
-              }
-            else
-               if(position.takeProfit == nextTp)
-                 {
-                  nextTp = nextTp + nextPositionByPoints;
-                 }
-           }
-         //check np gap but missing at the top
-         if(nextTp <= maxBufferedTp)
-           {
-            headerLine += "G2";
-            openOrder(ORDER_TYPE_BUY, 0, nextTp);
-            return;
-           }
-        }
-     }
+      for (int i=0; i<=maxBuffer; i++){
+         double tp = NormPrice(closestTakeProfit + i * nextPositionByPoints);
+         if (!existingTakeProfits.Contains(tp)) {
+            openOrder(ORDER_TYPE_BUY, 0, tp);
+         }
+      }
   }
 
 //+------------------------------------------------------------------+
@@ -455,7 +386,7 @@ bool stochDoubleSellLogic()
          return true;
         }
      }
-     return false;
+   return false;
   }
 
 //+------------------------------------------------------------------+
@@ -475,18 +406,20 @@ void updateTakeProfitsGlobally()
       Position positionToClose = sellPositions[positionToCloseIdx];
 
       double totalLots = bestPosition.lots + positionToClose.lots;
-      double takeProfitPrice = NormPrice( (bestPosition.lots * bestPosition.openPrice + positionToClose.lots * positionToClose.openPrice)/totalLots );
+      double takeProfitPrice = NormPrice((bestPosition.lots * bestPosition.openPrice + positionToClose.lots * positionToClose.openPrice)/totalLots);
 
-      if (bestPosition.takeProfit != takeProfitPrice){
+      if(bestPosition.takeProfit != takeProfitPrice)
+        {
          Print("BEST SEll TP " + bestPosition.ticket + " " + bestPosition.openPrice + " " + bestPosition.takeProfit);
          m_trade.PositionModify(bestPosition.ticket, 0, takeProfitPrice);
          Print("BEST SEll TP DONE " + bestPosition.ticket + " " + bestPosition.openPrice + " " + bestPosition.takeProfit);
-      }
-      if (positionToClose.takeProfit != takeProfitPrice){
+        }
+      if(positionToClose.takeProfit != takeProfitPrice)
+        {
          Print("worst SEll TP " + positionToClose.ticket + " " + positionToClose.openPrice + " " + positionToClose.takeProfit);
          m_trade.PositionModify(positionToClose.ticket, 0, takeProfitPrice);
          Print("worst SEll TP DONE " + positionToClose.ticket + " " + positionToClose.openPrice + " " + positionToClose.takeProfit);
-      }
+        }
       //OrderCommission(); OrderSwap();
       //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
 
@@ -495,11 +428,12 @@ void updateTakeProfitsGlobally()
          if(i != bestPositionIdx && i != positionToCloseIdx)
            {
             Position position = sellPositions[i];
-            if (position.takeProfit != 0.){
-               Print("Reset SEll TP " + position.ticket + " " + position.openPrice);
+            if(position.takeProfit != 0.)
+              {
+               Print("Reset SEll TP " + DoubleToString(position.ticket,0) + " " + position.openPrice);
                m_trade.PositionModify(position.ticket, 0, 0);
-               Print("Reset SEll TP DONE " + position.ticket + " " + position.openPrice);
-            }
+               Print("Reset SEll TP DONE " + DoubleToString(position.ticket,0) + " " + position.openPrice);
+              }
            }
         }
       headerLine += " SellTP: " + takeProfitPrice; //13169
@@ -590,8 +524,8 @@ bool ButtonCreate(const long chart_ID = 0, const string name = "Button", const i
       Print(__FUNCTION__, " : failed to create the button! Error code : ", GetLastError());
       return(false);
      }
-       ObjectSetInteger(chart_ID,name,OBJPROP_CORNER,CORNER_LEFT_LOWER);
-      ObjectSetInteger(chart_ID,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
+   ObjectSetInteger(chart_ID,name,OBJPROP_CORNER,CORNER_LEFT_LOWER);
+   ObjectSetInteger(chart_ID,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
    ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width);
@@ -635,10 +569,13 @@ bool ButtonDelete(const long chart_ID=0, const string name="Button")
   }
 //+------------------------------------------------------------------+
 void WriteLabel(string sName,string sValue)
-{
+  {
    ObjectSetString(0,sName,OBJPROP_TEXT,sValue);
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void CreateLabel(
    const string objectName,
    const int xDistance = 10,
@@ -653,13 +590,14 @@ void CreateLabel(
       ObjectSetInteger(0,objectName,OBJPROP_FONTSIZE,8);
       ObjectSetInteger(0,objectName,OBJPROP_XDISTANCE,xDistance);
       ObjectSetInteger(0,objectName,OBJPROP_YDISTANCE,yDistance);
-     // ObjectSetInteger(0,"btmComment",OBJPROP_BGCOLOR,clrGreen);
-     // ObjectSetInteger(0,"btmComment",OBJPROP_COLOR, clrWhite);
+      // ObjectSetInteger(0,"btmComment",OBJPROP_BGCOLOR,clrGreen);
+      // ObjectSetInteger(0,"btmComment",OBJPROP_COLOR, clrWhite);
       //ObjectSetInteger(0,"btmComment",OBJPROP_XSIZE, 1000);
-     // ObjectSetInteger(0,"btmComment",OBJPROP_YSIZE, 10);
+      // ObjectSetInteger(0,"btmComment",OBJPROP_YSIZE, 10);
       //ObjectSetString(0, objectName, OBJPROP_FONT,"Arial");
-     // ObjectSetInteger(0,"btmComment",OBJPROP_SELECTABLE,false);
+      // ObjectSetInteger(0,"btmComment",OBJPROP_SELECTABLE,false);
      }
    else
       Print("Failed to create the object OBJ_LABEL btmComment, Error code = ", GetLastError());
   }
+//+------------------------------------------------------------------+
