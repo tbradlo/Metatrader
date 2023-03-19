@@ -17,7 +17,7 @@
 CTrade         m_trade;
 
 /**
-    v0.7, 25 Dec 2022
+    v0.8, 19 Mar 2023
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -246,8 +246,11 @@ void openOrdersLogic()
          Print("sell opened");
         }
      }
-
-    openBuyOrders();
+   else
+      if(buyPositionsTp[0].takeProfit - askPrice >= nextPositionByPoints)
+        {
+          openBuyOrders();
+        }
   }
 
 
