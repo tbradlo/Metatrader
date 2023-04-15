@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                              BUY GRID v3 avg.mq5 |
+//|                                              BUY GRID v5 avg.mq5 |
 //|                                    Copyright 2023, Tomasz Bradlo |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
@@ -17,10 +17,10 @@
 CTrade         m_trade;
 
 /**
-    v0.8, 19 Mar 2023
+    v0.9, 15 Apr 2023
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
-    Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
+    Good candidate can be NASDAQ being close to the bottom.
     Profitable but requires a big depo.
 */
 
@@ -259,13 +259,16 @@ void openBuyOrders()
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextBuyPositionByPoints) * nextBuyPositionByPoints);
 
-      for (int i=0; i<=maxBuffer; i++){
-         double tp = NormPrice(closestTakeProfit + i * nextBuyPositionByPoints);
-         if (!existingTakeProfits.Contains(tp)) {
-            openOrder(ORDER_TYPE_BUY, 0, tp);
-         }
+      if (!existingTakeProfits.Contains(closestTakeProfit)){
+         openOrder(ORDER_TYPE_BUY, 0, closestTakeProfit); //regular
+      } else if (existingTakeProfits.Count() < maxBuffer && (buyPositions[0].openPrice - nextBuyPositionByPoints/2) > askPrice) {
+         openOrder(ORDER_TYPE_BUY, 0, nextTakeProfit(closestTakeProfit)); //buffer in between
       }
   }
+
+int nextTakeProfit(double lastSetTp) {
+   return MathMax(lastSetTp, buyPositions[totalBuyPositions-1].takeProfit) + nextBuyPositionByPoints;
+}
 
 //+------------------------------------------------------------------+
 //|                                                                  |
