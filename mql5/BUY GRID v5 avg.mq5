@@ -29,17 +29,20 @@ CTrade         m_trade;
 input string expertName = "GRID buy";
 input int expertId = 8;
 
-input double inPositionsSize = 0.1; //how big positions to open
-input double inNextBuyPositionByPoints = 20;
-input int maxBuffer = 2; // keep X positions sell buffer to have sth to sell in case of rapid grow
-input double minBuyPrice = 10000.; // Price at which Account Margin will be 100% (used for positionSize calculation)
+// BUY
+input double buyPositionsSize = 0.1; //how big positions to open
+input double nextBuyPositionByPoints = 50;
+input int maxBuffer = 0; // keep X positions sell buffer to have sth to sell in case of rapid grow
+input double takeProfitPoints = 75;
+input int maxBuyPositions = 10;
 
-input double takeProfitPoints = 30;
 
-
-input double sellPositionSize = 0.30; //SELL position size
-input int sellPositionsToOpen = 2; //How many SELLs to keep open
-input double nextSellPositionByPoints = 250;
+// SELL
+input double sellPositionSize = 0.02; //SELL position size
+input int sellPositionsToOpen = 4; //How many SELLs to keep open
+input double nextSellPositionByPoints = 50;
+input int sellPosToClose = 5; //Xth worst to close
+input int maxSellPositions = 5;
 
 // Stoch params
 input int stoch_K_Period = 14;
@@ -82,9 +85,8 @@ CHashSet<double> existingTakeProfits; //sortedTakeProfits Asc
 int totalBuyPositions = 0;
 int totalSellPositions = 0;
 
-double nextPositionByPoints = 0.;
+
 bool inactive = false;
-double positionSize = 0;
 
 extern int Corner = 2;
 extern int Move_X = 0;
@@ -113,8 +115,6 @@ void OnInit(void)
 
    CreateButtons();
    double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   nextPositionByPoints = inNextBuyPositionByPoints;
-   positionSize = inPositionsSize > 0 ? inPositionsSize : calculatePositionSize();
 //OnTick();
   }
 
@@ -226,15 +226,18 @@ void calculate()
   {
    if(!stochDoubleSellLogic())
      {
-      openOrdersLogic();
+      openBuyOrdersLogic();
      }
   }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void openOrdersLogic()
+void openBuyOrdersLogic()
   {
+   if (totalBuyPositions >= maxBuyPositions){
+      return;
+   }
 
    double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 // Place initial Orders
@@ -246,21 +249,18 @@ void openOrdersLogic()
          Print("sell opened");
         }
      }
-   else
-      if(buyPositionsTp[0].takeProfit - askPrice >= nextPositionByPoints)
-        {
-          openBuyOrders();
-        }
+
+    openBuyOrders();
   }
 
 
 void openBuyOrders()
   {
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextPositionByPoints) * nextPositionByPoints);
+      double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextBuyPositionByPoints) * nextBuyPositionByPoints);
 
       for (int i=0; i<=maxBuffer; i++){
-         double tp = NormPrice(closestTakeProfit + i * nextPositionByPoints);
+         double tp = NormPrice(closestTakeProfit + i * nextBuyPositionByPoints);
          if (!existingTakeProfits.Contains(tp)) {
             openOrder(ORDER_TYPE_BUY, 0, tp);
          }
@@ -272,17 +272,9 @@ void openBuyOrders()
 //+------------------------------------------------------------------+
 void openOrder(int type, double price = 0, double takeProfit = 0)
   {
-   if(positionSize == 0)
-     {
-      calculatePositionSize();
-     }
-   if(positionSize == -1)
-     {
-      return;
-     }
    if(type == ORDER_TYPE_BUY)
      {
-      m_trade.Buy(positionSize,_Symbol,price,0,NormPrice(takeProfit),expertName + " " + expertId);
+      m_trade.Buy(buyPositionsSize,_Symbol,price,0,NormPrice(takeProfit),expertName + " " + expertId);
      }
    else
       if(type == ORDER_TYPE_SELL)
@@ -304,43 +296,7 @@ double NormPrice(double price)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-double calculatePositionSize()
-  {
-   double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double pointValuePerLot = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE) / SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   double maxAdditionalLoss = 0;
-   double totalOpenedLots = 0;
-   for(int i=0; i < totalBuyPositions; i++)
-     {
-      totalOpenedLots = buyPositions[i].lots;
-     }
-   maxAdditionalLoss = (minBuyPrice-bidPrice) * totalOpenedLots * pointValuePerLot;
-   headerLine += " Max additional loss: " + DoubleToString(maxAdditionalLoss,2) + "@" + minBuyPrice;
 
-   double equityAtLowestPrice = AccountInfoDouble(ACCOUNT_EQUITY)+maxAdditionalLoss;
-   double marginRequredAtLowestPrice = MarginAtMinBuyPrice(totalOpenedLots, pointValuePerLot);
-
-   headerLine += " equityAtLowestPrice: " + DoubleToString(equityAtLowestPrice,2) + " marginRequredAtLowestPrice: " + DoubleToString(marginRequredAtLowestPrice,2) ;
-
-   double nextOpenPrice = totalBuyPositions > 0 ? buyPositions[0].openPrice - nextPositionByPoints : askPrice;
-   int positionsToOpen = MathFloor((nextOpenPrice - minBuyPrice)/nextPositionByPoints + 1);
-
-   headerLine += " positionsToOpen: " + positionsToOpen;
-
-// 9936-2 = margin(0.01*635) + (12352-6000)*0.01*635*1
-// 9934 = 0.002*635*1*6000/30 + 6352*0.002*635*1
-// (9936-2) / (635*1*6000/30 + 6352*635*1) = 0.02
-// equityAtLowestPrice - marginRequredAtLowestPrice = marginRequredAtLowestPrice(newPositionsSize? * positionsToOpen)+ (askPrice-minBuyPrice) * newPositionsSize? * positionsToOpen * pointValuePerLot
-// = >
-   int leverage = CalculateSymbolLeverage(_Symbol);
-   double newPositionsSize = (equityAtLowestPrice - marginRequredAtLowestPrice) / (positionsToOpen * pointValuePerLot * minBuyPrice / leverage + ((askPrice-minBuyPrice)*positionsToOpen*pointValuePerLot));
-   newPositionsSize = MathFloor(newPositionsSize / SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP)) * SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-
-   positionSize = newPositionsSize == 0 ? -1 : newPositionsSize;
-   headerLine += " NewPositionSize: " + DoubleToString(positionSize,2) + " lotstep: " + SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   return positionSize;
-  }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -363,13 +319,6 @@ int CalculateSymbolLeverage(const string symbol)
    return leverage;
   }
 
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-double MarginAtMinBuyPrice(double lots, double pointValuePerLot)
-  {
-   return lots * pointValuePerLot * minBuyPrice / CalculateSymbolLeverage(_Symbol);
-  }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -377,7 +326,7 @@ double MarginAtMinBuyPrice(double lots, double pointValuePerLot)
 bool stochDoubleSellLogic()
   {
 //open SELL orders on SELL signal
-   if(sellPositionsToOpen > 0)
+   if(sellPositionsToOpen > 0 && totalSellPositions < maxSellPositions )
      {
       double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
       double nextSellPrice = totalSellPositions == 0 ? bidPrice : NormPrice(sellPositions[totalSellPositions-1].openPrice + nextSellPositionByPoints);
@@ -398,12 +347,12 @@ bool stochDoubleSellLogic()
 void updateTakeProfitsGlobally()
   {
 // update SELL take profits if owns more SELLs than expected
-   if(totalSellPositions > sellPositionsToOpen)
+   if(totalSellPositions > sellPositionsToOpen && sellPosToClose >= totalSellPositions)
      {
 
       //canibalize best and close 3rd best
       int bestPositionIdx = totalSellPositions - 1;
-      int positionToCloseIdx = totalSellPositions-1-2;
+      int positionToCloseIdx = totalSellPositions - sellPosToClose;
 
       Position bestPosition = sellPositions[bestPositionIdx];
       Position positionToClose = sellPositions[positionToCloseIdx];
