@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.7, 25 Dec 2022
+    v0.8, 17 Apr 2023
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -11,20 +11,21 @@
 #include <stdlib.mqh>
 #include <ArraySortStruct.mqh>
 
-input string expertName = "GRID buy*2";
-input int expertId = 8;
+input string expertName = "GRID buy";
+input int expertId = 333;
 
 input double inPositionsSize = 0.01; //how big positions to open
-input double inNextBuyPositionByPoints = 10;
-input double sellBufferPoints = 40; // keep X points sell buffer to have sth to sell in case of rapid grow
+input double inNextBuyPositionByPoints = 15;
+input int maxBuyPositions = 100;
+input double maxBuffer = 5; // keep at least X buy positions open
 input double minBuyPrice = 10000.; // Price at which Account Margin will be 100% (used for positionSize calculation)
 
-input double takeProfitPoints = 10;
+input double takeProfitPoints = 26;
 
 
-input double sellPositionSize = 0.50; //SELL position size
-input int sellPositionsToOpen = 2; //How many SELLs to keep open
-input double nextSellPositionByPoints = 125;
+input double sellPositionSize = 0.30; //SELL position size
+input int sellPositionsToOpen = 0; //How many SELLs to keep open
+input double nextSellPositionByPoints = 250;
 
 // Stoch params
 input int stoch_K_Period = 14;
@@ -64,6 +65,7 @@ int totalSellPositions = 0;
 double nextPositionByPoints = 0.;
 bool inactive = false;
 double positionSize = 0;
+bool sleep = false;
 
 extern int Corner = 2;
 extern int Move_X = 0;
@@ -99,9 +101,20 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
+    if (Hour() < 21) sleep = false;
+
+    if (!sleep && Hour() == 21 && Minute() == 59){
+      //closeAllOrders();
+      //sleep = true;
+    }
+
+   if (sleep) {
+      return;
+   }
+
     double bidPrice = MarketInfo(Symbol(), MODE_BID);
 
-    comment = "";
+    comment = inactive ? "INACTIVE " : "";
     readPositions();
 
     calculate();
@@ -112,6 +125,25 @@ void OnTick(void)
     }
 
     Comment(comment);
+
+
+
+}
+
+void closeAllOrders() {
+   for (int i = OrdersTotal() - 1; i >= 0; i--) {
+      if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
+         if (_Symbol == OrderSymbol() && OrderMagicNumber() == expertId ){
+            if (OrderType() == OP_BUY){
+               OrderClose(OrderTicket(), OrderLots(), Bid, 0.01*Bid, Yellow);
+            } else if (OrderType() == OP_BUYLIMIT || OrderType() == OP_SELLLIMIT) {
+               OrderDelete(OrderTicket());
+            } else if (OrderType() == OP_SELL) {
+               OrderClose(OrderTicket(), OrderLots(), Ask, 0.01*Ask, Yellow);
+            }
+          }
+      }
+   }
 }
 
 
@@ -122,7 +154,7 @@ void readPositions(){
 
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && (expertId == OrderMagicNumber() || expertId == 0) && _Symbol == OrderSymbol()) {
-         Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice(), OrderTakeProfit());
+         Position* p = new Position(OrderTicket(), OrderLots(), OrderProfit(), OrderOpenPrice(), NormPrice(OrderTakeProfit()));
          if (OrderType() == OP_BUY) {
             ArrayAppend(buyPositions, p);
             ArrayAppend(buyPositionsTp, p);
@@ -141,19 +173,23 @@ void readPositions(){
 
    double totalProfit = 0.;
    double totalSellLots = 0.;
+   double totalBuyLots = 0.;
 
    for (int i=totalBuyPositions-1; i>=0; i--){
       totalProfit += buyPositions[i].profit;
+      totalBuyLots += buyPositions[i].lots;
    }
    for (int i=totalSellPositions-1; i>=0; i--){
       totalProfit += sellPositions[i].profit;
       totalSellLots += sellPositions[i].lots;
    }
 
-   comment += ", SELL: " + totalSellPositions + "(" + totalSellLots + " lots), BUY: " + totalBuyPositions + ", Profit: " + DoubleToStr(totalProfit,2) + " Balance: " + DoubleToStr(AccountBalance(),2) + " EQ: " + DoubleToStr(AccountEquity(),2);
+   comment += ", SELL: " + totalSellPositions + "(" + totalSellLots + " lots), BUY: " + totalBuyPositions + "(" + totalBuyLots + " lots), Profit: " + DoubleToStr(totalProfit,2) +
+   " Balance: " + DoubleToStr(AccountBalance(),2) + " EQ: " + DoubleToStr(AccountEquity(),2) + " total: " + OrdersTotal();
 }
 
 void OnTrade(){
+   if (sleep) return;
    updateTakeProfitsGlobally();
 }
 
@@ -170,81 +206,40 @@ int ordersTotal = OrdersTotal();
 //+------------------------------------------------------------------+
 void calculate()
 {
+   if (inactive) return;
    stochDoubleSellLogic();
-   openOrdersLogic();
+   openBuyOrdersLogic();
 }
 
-void openOrdersLogic(){
+void openBuyOrdersLogic(){
+   if (totalBuyPositions >= maxBuyPositions){
+      return;
+   }
 
-   double askPrice = MarketInfo(Symbol(), MODE_ASK);
    // Place initial Orders
    if (totalBuyPositions == 0) {
       if (sellPositionsToOpen > 0){
          openOrder(OP_SELL);
       }
-      openBuyOrders();
-   } else if (buyPositionsTp[0].takeProfit - askPrice >= nextPositionByPoints) {
-      openBuyOrders();
    }
+
+   openBuyOrders();
 }
 
-//open one or two buy orders (in case of lack of "sell buffer")
-void openBuyOrders(){
-   double askPrice = MarketInfo(Symbol(), MODE_ASK);
-   double closestClosePrice =  NormPrice(MathFloor(askPrice / nextPositionByPoints)*nextPositionByPoints);
+void openBuyOrders()
+  {
+      double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextPositionByPoints) * nextPositionByPoints);
 
-   if (totalBuyPositions == 0) {
-      //use standarized takeProfit positions (for buffer calculation purposes)
-      double takeProfitPrice = NormPrice(MathFloor((askPrice+takeProfitPoints) / nextPositionByPoints)*nextPositionByPoints);
-      openOrder(OP_BUY, 0, takeProfitPrice);
-      if (sellBufferPoints > nextPositionByPoints){
-         openOrder(OP_BUY, 0, takeProfitPrice+nextPositionByPoints);
+      if (totalBuyPositions == 0 || buyPositionsTp[0].takeProfit > closestTakeProfit){
+         openOrder(OP_BUY, 0, closestTakeProfit); //regular
+      } else if (totalBuyPositions < maxBuffer && (buyPositions[0].openPrice - nextPositionByPoints/2) > askPrice) {
+         openOrder(OP_BUY, 0, nextTakeProfit(closestTakeProfit)); //buffer in between
       }
-   } else {
-      double closestTakeProfit =  NormPrice(MathCeil((askPrice+takeProfitPoints) / nextPositionByPoints)*nextPositionByPoints);
-      double maxBufferedTp = closestTakeProfit + sellBufferPoints;
+  }
 
-      int closestPosition = -1;
-      int nextTpPosition = -1;
-      for (int i=0; i<totalBuyPositions; i++){
-         Position position = buyPositionsTp[i];
-         if (position.takeProfit == closestTakeProfit){ // TP exists
-            closestPosition = i;
-            nextTpPosition = i+1;
-            break;
-         } else if (position.takeProfit > closestTakeProfit){ // bigger TP exist
-            nextTpPosition = i;
-            break;
-         }
-      }
-
-      if (closestPosition == -1){
-         openOrder(OP_BUY, 0, closestTakeProfit);
-      }
-
-      if (nextTpPosition == -1 && nextPositionByPoints < sellBufferPoints){
-      comment += "B ";
-         openOrder(OP_BUY, 0, closestTakeProfit+nextPositionByPoints);
-      } else {
-         //check if there is any TP gap for the buffer
-         double nextTp = closestTakeProfit + nextPositionByPoints;
-         for (int i=nextTpPosition; i<totalBuyPositions && nextTp <= maxBufferedTp; i++){
-            Position position = buyPositionsTp[i];
-            if (position.takeProfit > nextTp){
-               openOrder(OP_BUY, 0, nextTp);
-               break;
-               return;
-            } else if (position.takeProfit == nextTp){
-               nextTp = nextTp + nextPositionByPoints;
-            }
-         }
-         //check np gap but missing at the top
-         if (nextTp <= maxBufferedTp){
-            openOrder(OP_BUY, 0, nextTp);
-            return;
-         }
-      }
-   }
+int nextTakeProfit(double lastSetTp) {
+   return MathMax(lastSetTp, buyPositionsTp[totalBuyPositions-1].takeProfit) + nextPositionByPoints;
 }
 
 void openOrder(int type, double price = 0, double takeProfit = 0){
@@ -256,9 +251,7 @@ void openOrder(int type, double price = 0, double takeProfit = 0){
    }
    if (type == OP_BUY){
       if (price == 0) price = Ask;
-
-      double takeProfit =
-
+      comment += "xx3";
       OrderSend(_Symbol, type, positionSize, price, 0.001*Ask, 0, NormPrice(takeProfit), expertName + " " + expertId, expertId, 0, Green);
    } else if (type == OP_SELL || type == OP_SELLLIMIT) {
       if (price == 0) price = Bid;
@@ -327,24 +320,29 @@ void stochDoubleSellLogic(){
 
 void updateTakeProfitsGlobally() {
    // update SELL take profits if owns more SELLs than expected
-   if (totalSellPositions > sellPositionsToOpen){
-      double totalLots = 0.0;
-      double totalWagedOpenPrice = 0.0;
+   if (totalSellPositions > sellPositionsToOpen && totalSellPositions >=3){
 
-      // worst positions to close
-      for (int i=0; i<totalSellPositions-sellPositionsToOpen; i++){
-         Position position = sellPositions[i];
-         totalLots += position.lots;
-         totalWagedOpenPrice += position.openPrice * position.lots;
-      }
+      //canibalize best and close 3rd best
+      int bestPositionIdx = totalSellPositions - 1;
+      int positionToCloseIdx = totalSellPositions-1-2;
 
+      Position bestPosition = sellPositions[bestPositionIdx];
+      Position positionToClose = sellPositions[positionToCloseIdx];
+
+      double totalLots = bestPosition.lots + positionToClose.lots;
+      double takeProfitPrice = (bestPosition.lots * bestPosition.openPrice + positionToClose.lots * positionToClose.openPrice)/totalLots;
+      takeProfitPrice = NormPrice(takeProfitPrice);
+
+      OrderModify(bestPosition.ticket, 0., 0., takeProfitPrice, 0);
+      OrderModify(positionToClose.ticket, 0., 0., takeProfitPrice, 0);
       //OrderCommission(); OrderSwap();
       //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
 
-      double takeProfitPrice = NormPrice(totalWagedOpenPrice / totalLots);
-      for (int i=0; i<totalSellPositions-sellPositionsToOpen; i++){
-         Position position = sellPositions[i];
-         OrderModify(position.ticket, 0., 0., takeProfitPrice, 0);
+      for (int i=0; i<totalSellPositions; i++){
+         if (i != bestPositionIdx && i != positionToCloseIdx){
+            Position position = sellPositions[i];
+            OrderModify(position.ticket, 0., 0., 0., 0);
+         }
       }
       comment += " SellTP: " + takeProfitPrice; //13169
    }
@@ -386,6 +384,7 @@ void ButtonPressed (const long chartID, const string action)
     {
      ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrBlack); // button pressed
      if (action == "SellOne_btn") SellOne_Button (action);
+     if (action == "ClearALL_btn") ClearAll_Button (action);
      Sleep (2000);
      ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrYellow); // button unpressed
      ObjectSetInteger (chartID, action, OBJPROP_STATE, false); // button unpressed
@@ -398,10 +397,36 @@ int SellOne_Button (const string action)
    return(0);
   }
 
+  int ClearAll_Button (const string action)
+  {
+   inactive = true;
+   int ticket;
+   readPositions();
+   double bidPrice = MarketInfo(OrderSymbol(), MODE_BID);
+   double askPrice = MarketInfo(OrderSymbol(), MODE_ASK);
+   for (int i=0; i<totalBuyPositions; i++){
+      Position position = buyPositions[i];
+      ticket = OrderClose (position.ticket, position.lots, bidPrice, 0.01*Bid, clrNONE);
+     if (ticket == -1) Print ("Error : ",  GetLastError());
+     if (ticket >   0) Print ("Position ", OrderTicket() ," closed");
+   }
+   for (int i=0; i<totalSellPositions; i++){
+      Position position = sellPositions[i];
+      ticket = OrderClose (position.ticket, position.lots, askPrice, 0.01*Ask, clrNONE);
+     if (ticket == -1) Print ("Error : ",  GetLastError());
+     if (ticket >   0) Print ("Position ", OrderTicket() ," closed");
+   }
+
+   return(0);
+  }
+
+
  void CreateButtons()
      {
       int Button_Height = (int)(Font_Size*2.8);
       if (!ButtonCreate (0, "SellOne_btn", 0, 002 + 000 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
+      if (!ButtonCreate (0, "ClearALL_btn", 0, 002 + 035 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "CLR", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
+
       ChartRedraw();
      }
 
@@ -439,6 +464,7 @@ int SellOne_Button (const string action)
   void DeleteButtons()
      {
       ButtonDelete (0, "SellOne_btn");
+      ButtonDelete(0, "ClearALL_btn");
      }
 
  bool ButtonDelete (const long chart_ID=0, const string name="Button")
