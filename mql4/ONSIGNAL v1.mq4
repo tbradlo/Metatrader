@@ -1,11 +1,5 @@
 #property strict
 
-/**
-    v1.1, 20 Dec 2022
-    Cumulates Sells or Buys on Stoch M15 signal, looks good on US100
-    It would be good to have piramide bot running in parallel to hedge against cumulating too much
-*/
-
 #include <stdlib.mqh>
 #include <ArraySortStruct.mqh>
 
@@ -170,7 +164,7 @@ void readPositions(){
    }
 
    comment += " BUY: " + totalBuyPositions + " SELL: " + totalSellPositions;
-   comment += " BE: " + DoubleToStr(breakEvenPrice, 2) + " Profit: " + DoubleToStr(totalProfit,2);
+   comment += " BE: " + DoubleToStr(breakEvenPrice,2) + " Profit: " + DoubleToStr(totalProfit,2);
 }
 
 void ArrayAppend(Position & array[], Position & position){
@@ -259,10 +253,11 @@ void doubleBuyLogic(){
       double askPrice = MarketInfo(Symbol(), MODE_ASK);
       double minBoughtPrice = totalBuyPositions == 0 ? 9999999 : buyPositions[0].openPrice;
       double nextBuyPrice = totalBuyPositions == 0 ? askPrice : NormPrice(buyPositions[0].openPrice - nextBuyPositionByPoints);
+      nextBuyPrice = MathMin(nextBuyPrice, buyFromPrice);
 
       bool canOpenMoreBuyOrders = totalBuyPositions < totalSellPositions + maxExtraBuyPositions;
       string stochSignal = stochSignal(PERIOD_M15);
-      comment += " NextBuy: " + DoubleToStr(nextBuyPrice,2) + (canOpenMoreBuyOrders ? "+" : "-") + ", Stoch: " + stochSignal;
+      comment += "NextBuy: " + DoubleToStr(nextBuyPrice,2) + (canOpenMoreBuyOrders ? "+" : "-") + ", Stoch: " + stochSignal;
       if (canOpenMoreBuyOrders && askPrice < minBoughtPrice && askPrice <= nextBuyPrice && stochSignal == "buy") {
          openOrder(OP_BUY);
       }
