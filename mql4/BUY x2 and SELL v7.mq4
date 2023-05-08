@@ -19,6 +19,7 @@ input double inAccumulateFromPrice = 0; //Accumulate from
 input double sellPositionSize = 0.01; //SELL position size
 input int sellPositionCount = 2;
 input int maxExtraOppositeOrders = 2; // how many sell orders MORE than opened buy orders can be opened
+input double sellFrom = 0.;
 
 // both BUY and SELL (sell will be multipied by 2)
 input double nextPositionByPoints = 50;
@@ -87,6 +88,7 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
+
     comment = "";
     readPositions();
 
@@ -164,7 +166,8 @@ void readPositions(){
       breakEvenPrice = 0;
    }
 
-   comment += "BUY: " + totalBuyPositions + ", Pending BUY: " + totalBuyLimitPositions + ", SELL: " + totalSellPositions + " BE: " + breakEvenPrice + ", Profit: " + DoubleToStr(totalBuyProfit + totalSellProfit,2) ;
+   comment += "BUY: " + totalBuyPositions + ", Pending BUY: " + totalBuyLimitPositions + ", SELL: " + totalSellPositions + " BE: " + breakEvenPrice +
+      ", Profit: " + DoubleToStr(totalBuyProfit + totalSellProfit,2);
 
 }
 
@@ -336,6 +339,7 @@ void stochDoubleSellLogic(){
    if (sellPositionCount > 0) {
       double bidPrice = MarketInfo(Symbol(), MODE_BID);
       double nextSellPrice = totalSellPositions == 0 ? bidPrice : NormPrice(maxSellPrice + nextPositionByPoints * 2);
+      nextSellPrice = MathMax(nextSellPrice, sellFrom);
 
       bool canOpenMoreSellOrders = totalSellPositions < totalBuyPositions + maxExtraOppositeOrders;
       string stochSignal = stochSignal(PERIOD_M15);
