@@ -39,7 +39,7 @@ input int maxBuyPositions = 10;
 
 // SELL
 input double sellPositionSize = 0.02; //SELL position size
-input int sellPositionsToOpen = 4; //How many SELLs to keep open
+input int sellPositionsToOpen = 4;
 input double nextSellPositionByPoints = 50;
 input int sellPosToClose = 5; //Xth worst to close
 input int maxSellPositions = 5;
@@ -115,6 +115,7 @@ void OnInit(void)
 
    CreateButtons();
    double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
 //OnTick();
   }
 
@@ -259,6 +260,11 @@ void openBuyOrders()
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextBuyPositionByPoints) * nextBuyPositionByPoints);
 
+      ownsLine += " NextB: " + (closestTakeProfit - takeProfitPoints - nextBuyPositionByPoints);
+      if (totalBuyPositions > 0){
+         ownsLine += " / " + (buyPositions[0].openPrice - nextBuyPositionByPoints/2);
+      }
+
       if (!existingTakeProfits.Contains(closestTakeProfit)){
          openOrder(ORDER_TYPE_BUY, 0, closestTakeProfit); //regular
       } else if (existingTakeProfits.Count() < maxBuffer && (buyPositions[0].openPrice - nextBuyPositionByPoints/2) > askPrice) {
@@ -334,7 +340,7 @@ bool stochDoubleSellLogic()
       double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
       double nextSellPrice = totalSellPositions == 0 ? bidPrice : NormPrice(sellPositions[totalSellPositions-1].openPrice + nextSellPositionByPoints);
 
-      headerLine += " NextS: " + nextSellPrice;
+      headerLine += " NextS: " + DoubleToString(nextSellPrice, SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
       if(bidPrice >= nextSellPrice && stochSignal() == "sell")
         {
          openOrder(ORDER_TYPE_SELL);
@@ -349,8 +355,8 @@ bool stochDoubleSellLogic()
 //+------------------------------------------------------------------+
 void updateTakeProfitsGlobally()
   {
-// update SELL take profits if owns more SELLs than expected
-   if(totalSellPositions > sellPositionsToOpen && sellPosToClose >= totalSellPositions)
+   // update SELL take profits if owns more SELLs than expected
+   if(totalSellPositions > sellPositionsToOpen && sellPosToClose <= totalSellPositions)
      {
 
       //canibalize best and close 3rd best
