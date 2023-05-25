@@ -8,37 +8,64 @@ from vnpy_ctastrategy.base import EngineType, BacktestingMode
 from vnpy.trader.constant import Exchange, Direction, Offset, Interval
 from vnpy.trader.object import TickData, PositionData
 from vnpy_ctastrategy.strategies.grid_buy import GridBuyStrategy
-from unittest.mock import MagicMock, ANY
 
 
 class TestGridBuy(TestCase):
 
     def test_when_initialized_should_send_one_buy_limit(self):
         test_engine = BacktestingEngine()
-        test_engine.set_parameters(vt_symbol="SAVE-SEK-STK.SFB",
+        test_engine.set_parameters(vt_symbol="PBR-USD-STK.SMART",
                                    interval=Interval.MINUTE,
                                    mode=BacktestingMode.TICK,
                                    start=datetime.strptime("2023-01-01", "%Y-%m-%d"),
-                                   rate=1,
+                                   rate=0.004,
                                    slippage=1,
                                    size=1,
-                                   pricetick=0.1)
+                                   pricetick=0.01)
         test_engine.add_strategy(GridBuyStrategy, {
-            "buy_amount": 2500,
-            "buy_step": 10,
+            "buy_amount": 500,
+            "buy_step": 0.25,
             "buy_orders_count": 1,
             "sell_orders_count": 1,
-            "take_profit_delta": 15
+            "take_profit_delta": 0.90
         })
         test_engine.history_data = [
-            a_tick("10:30:00", 120.),
-            a_tick("10:31:00", 120.)
+            a_tick("10:30:00", 11.90),
+            a_tick("10:31:00", 11.80)
         ]
         test_engine.run_backtesting()
 
         got_active_orders = {o.price: o.direction for o in test_engine.active_limit_orders.values()}
 
-        self.assertEqual({110.: Direction.LONG}, got_active_orders)
+        self.assertEqual({11.9: Direction.LONG}, got_active_orders)
+
+    def test_when_all_sold_and_higher_than_max_buy_price_should_NOT_send_one_buys(self):
+        test_engine = BacktestingEngine()
+        test_engine.set_parameters(vt_symbol="PBR-USD-STK.SMART",
+                                   interval=Interval.MINUTE,
+                                   mode=BacktestingMode.TICK,
+                                   start=datetime.strptime("2023-01-01", "%Y-%m-%d"),
+                                   rate=0.004,
+                                   slippage=1,
+                                   size=1,
+                                   pricetick=0.01)
+        test_engine.add_strategy(GridBuyStrategy, {
+            "buy_amount": 500,
+            "buy_step": 0.25,
+            "buy_orders_count": 1,
+            "sell_orders_count": 1,
+            "take_profit_delta": 0.90,
+            "max_buy_price": 11.0
+        })
+        test_engine.history_data = [
+            a_tick("10:30:00", 11.90),
+            a_tick("10:31:00", 11.80)
+        ]
+        test_engine.run_backtesting()
+
+        got_active_orders = {o.price: o.direction for o in test_engine.active_limit_orders.values()}
+
+        self.assertEqual({}, got_active_orders)
 
     def test_should_fill_buy_limit(self):
         test_engine = BacktestingEngine()
@@ -64,40 +91,40 @@ class TestGridBuy(TestCase):
         ]
         test_engine.run_backtesting()
 
-        self.assertEqual(23, test_engine.strategy.pos)
-        self.assertEqual(110, test_engine.strategy.last_buy_price)
+        self.assertEqual(27, test_engine.strategy.pos_d())
+        self.assertEqual(110, test_engine.strategy.last_buy_price_d())
 
     def test_when_last_buy_present_should_send_valid_orders(self):
         test_engine = BacktestingEngine()
-        test_engine.set_parameters(vt_symbol="SAVE-SEK-STK.SFB",
+        test_engine.set_parameters(vt_symbol="PBR-USD-STK.SMART",
                                    interval=Interval.MINUTE,
                                    mode=BacktestingMode.TICK,
                                    start=datetime.strptime("2023-01-01", "%Y-%m-%d"),
-                                   rate=1,
+                                   rate=0.004,
                                    slippage=1,
                                    size=1,
-                                   pricetick=0.1)
+                                   pricetick=0.01)
         test_engine.add_strategy(GridBuyStrategy, {
-            "buy_amount": 2500,
-            "buy_step": 10,
+            "buy_amount": 500,
+            "buy_step": 0.25,
             "buy_orders_count": 1,
             "sell_orders_count": 1,
-            "take_profit_delta": 15
+            "take_profit_delta": 0.50
         })
         test_engine.history_data = [
-            a_tick("10:30:00", 116.),
-            a_tick("10:31:00", 115.)
+            a_tick("10:30:00", 12.),
+            a_tick("10:31:00", 11.70)
         ]
 
-        test_engine.strategy.last_buy_price = 110
+        test_engine.strategy.last_buy_price = 11.75
         test_engine.strategy.pos = 23
 
         test_engine.run_backtesting()
 
         got_active_orders = {o.price: o.direction for o in test_engine.active_limit_orders.values()}
 
-        self.assertEqual(110, test_engine.strategy.last_buy_price)
-        self.assertEqual({100: Direction.LONG, 125: Direction.SHORT}, got_active_orders)
+        self.assertEqual(11.75, test_engine.strategy.last_buy_price)
+        self.assertEqual({11.50: Direction.LONG, 12.25: Direction.SHORT}, got_active_orders)
 
     def test_should_sell_everything(self):
         test_engine = BacktestingEngine()
