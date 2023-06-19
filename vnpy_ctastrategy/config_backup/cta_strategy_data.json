@@ -1,18 +1,18 @@
 {
     "EUR USD": {
-        "pos": 19491,
+        "pos": 19475,
         "last_buy_price": 1.068,
         "total_bought": 0.0,
         "total_sold": 0.0
     },
     "EUR PLN": {
-        "pos": 19491,
+        "pos": 19475,
         "last_buy_price": 4.44,
         "total_bought": 0.0,
         "total_sold": 0.0
     },
     "USD PLN": {
-        "pos": 69894,
+        "pos": 23426,
         "last_buy_price": 4.01,
         "total_bought": 0.0,
         "total_sold": 0.0
@@ -63,6 +63,36 @@
         "pos": 71,
         "last_buy_price": 9.22,
         "total_bought": 664.3299999999999,
+        "total_sold": 0.0
+    },
+    "EC USD": {
+        "pos": 103,
+        "last_buy_price": 9.5,
+        "total_bought": 1008.5,
+        "total_sold": 0.0
+    },
+    "RIO USD": {
+        "pos": 40,
+        "last_buy_price": 63.075,
+        "total_bought": 2524.0,
+        "total_sold": 0.0
+    },
+    "VALE USD": {
+        "pos": 183,
+        "last_buy_price": 13.685,
+        "total_bought": 2505.36,
+        "total_sold": 0.0
+    },
+    "MED USD": {
+        "pos": 19,
+        "last_buy_price": 79.93,
+        "total_bought": 1519.67,
+        "total_sold": 0.0
+    },
+    "SU USD": {
+        "pos": 17,
+        "last_buy_price": 30.44,
+        "total_bought": 518.48,
         "total_sold": 0.0
     }
 }
