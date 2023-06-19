@@ -127,6 +127,11 @@ class GridBuyStrategy(CtaTemplate):
                 if position.symbol == self.vt_symbol.rsplit(".", 1)[0]:
                     self.pos = int(position.volume)
                     break
+            if "-CASH." in self.vt_symbol:
+                ccy = self.vt_symbol.split("-")[0]
+                accounts_by_ccy = {key.split(".")[-1]: value for key, value in self.cta_engine.main_engine.engines['oms'].accounts.items() if key.endswith(f".{ccy}")}
+                if accounts_by_ccy:
+                    self.pos = int(accounts_by_ccy[ccy].balance)
 
             try:
                 self.active_buy_orders.clear()
@@ -134,6 +139,8 @@ class GridBuyStrategy(CtaTemplate):
                 active_orders: Dict[str, OrderData] = self.cta_engine.main_engine.engines['oms'].active_orders
                 for order_id, order_data in active_orders.items():
                     if order_data.symbol == self.vt_symbol.rsplit(".", 1)[0]:
+                        self.cta_engine.orderid_strategy_map[order_id] = self
+                        self.cta_engine.strategy_orderid_map[self.strategy_name].add(order_id)
                         if order_data.direction == Direction.LONG:
                             self.active_buy_orders[order_id] = Order(Decimal(str(order_data.price)), Decimal(str(order_data.volume)))
                         elif order_data.direction == Direction.SHORT:
@@ -142,6 +149,7 @@ class GridBuyStrategy(CtaTemplate):
                 self.write_log("Reading active orders Failed")
                 pass
         self.write_log(f"strategy start, Own vol: {self.pos} Sells: {len(self.active_sell_orders)} Buys: {len(self.active_buy_orders)}")
+        self.write_log(f"strategy orders in dict: : {len({key: value for key, value in self.cta_engine.orderid_strategy_map.items() if value == self})}")
         self.started = True
 
     def on_stop(self):
@@ -254,6 +262,7 @@ class GridBuyStrategy(CtaTemplate):
         pass
 
     def on_trade(self, trade: TradeData):
+        self.write_log(f"OnTrade called lastBuyPrice: {trade.vt_symbol} {trade.direction}")
         old_price = self.last_buy_price_d()
         if trade.direction == Direction.LONG:
             self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
