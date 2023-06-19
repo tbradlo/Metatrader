@@ -1,0 +1,68 @@
+{
+    "EUR USD": {
+        "pos": 19491,
+        "last_buy_price": 1.068,
+        "total_bought": 0.0,
+        "total_sold": 0.0
+    },
+    "EUR PLN": {
+        "pos": 19491,
+        "last_buy_price": 4.44,
+        "total_bought": 0.0,
+        "total_sold": 0.0
+    },
+    "USD PLN": {
+        "pos": 69894,
+        "last_buy_price": 4.01,
+        "total_bought": 0.0,
+        "total_sold": 0.0
+    },
+    "PEAB.B @ SFB": {
+        "pos": 583,
+        "last_buy_price": 42.6,
+        "total_bought": 26107.93,
+        "total_sold": 0.0
+    },
+    "PBR USD": {
+        "pos": 98,
+        "last_buy_price": 13.2,
+        "total_bought": 1299.3,
+        "total_sold": 0.0
+    },
+    "NEM USD": {
+        "pos": 70,
+        "last_buy_price": 42.94,
+        "total_bought": 3006.37,
+        "total_sold": 0.0
+    },
+    "GOLD USD": {
+        "pos": 220,
+        "last_buy_price": 16.5,
+        "total_bought": 3662.0,
+        "total_sold": 0.0
+    },
+    "NOD NOK": {
+        "pos": 49,
+        "last_buy_price": 135.36,
+        "total_bought": 6632.74,
+        "total_sold": 0.0
+    },
+    "PBB_EUR": {
+        "pos": 337,
+        "last_buy_price": 6.71,
+        "total_bought": 2150.69,
+        "total_sold": 0.0
+    },
+    "HLAG EUR": {
+        "pos": 6,
+        "last_buy_price": 190.0,
+        "total_bought": 1391.06,
+        "total_sold": 0.0
+    },
+    "MARA USD": {
+        "pos": 71,
+        "last_buy_price": 9.22,
+        "total_bought": 664.3299999999999,
+        "total_sold": 0.0
+    }
+}
