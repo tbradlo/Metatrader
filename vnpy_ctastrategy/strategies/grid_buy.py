@@ -9,7 +9,7 @@ from sortedcontainers import SortedDict
 from vnpy.trader.constant import Direction, Exchange
 from vnpy.trader.database import get_database
 from vnpy.trader.object import PositionData
-from vnpy.trader.utility import BarGenerator
+from vnpy.trader.utility import BarGenerator, extract_vt_symbol
 
 from vnpy_ctastrategy import (
     CtaTemplate,
@@ -21,6 +21,7 @@ from vnpy_ctastrategy import (
 )
 from vnpy_ctastrategy.base import EngineType
 from vnpy_ctastrategy.strategies.tbradlo.buy_percentage_prices_calculator import PercentagePricesCalculator
+from vnpy_ctastrategy.strategies.tbradlo.volume_calculator import VolumeCalculator
 
 
 @dataclass
@@ -72,6 +73,7 @@ class GridBuyStrategy(CtaTemplate):
 
         self.started = False
         self.prices_calculator: PercentagePricesCalculator
+        self.volume_calculator: VolumeCalculator
 
         super().__init__(cta_engine, strategy_name, vt_symbol, setting)
 
@@ -95,6 +97,9 @@ class GridBuyStrategy(CtaTemplate):
     def last_buy_price_d(self):
         return Decimal(str(self.last_buy_price))
 
+    def current_value_d(self):
+        return Decimal(str(self.current_value))
+
     def fetch_price_steps(self):
         symbol, exchange = self.vt_symbol.rsplit(".", 1)
         if self.cta_engine.main_engine:
@@ -116,6 +121,8 @@ class GridBuyStrategy(CtaTemplate):
         self.active_sell_orders.clear()
         self.total_bought = self.total_sold = 0.
         self.set_price_increments(self.fetch_price_steps())
+        _, exchange = extract_vt_symbol(self.vt_symbol)
+        self.volume_calculator = VolumeCalculator(exchange, self.max_cash_invested_d(), self.write_log)
         self.write_log("Strategy initialization completed")
 
     def on_start(self):
@@ -190,12 +197,9 @@ class GridBuyStrategy(CtaTemplate):
     def on_bar(self, bar: BarData):  # TODO narazie po 1m barach, bo by default ticki pobiera z RData a nie z IB
         if not self.started:
             return
-        self.write_log("on bar1")  # bar.datetime.timestamp() > datetime.strptime("2022-01-20","%Y-%m-%d").timestamp()
+        # self.write_log("on bar1")  # bar.datetime.timestamp() > datetime.strptime("2022-01-20","%Y-%m-%d").timestamp()
         self.current_value = bar.close_price * self.pos
         self.calculate(self.to_decimal(bar.low_price), self.to_decimal(bar.high_price))
-
-    def buy_volume(self, buy_price: Decimal) -> Decimal:
-        return Decimal(ceil(self.buy_amount_d() / buy_price))
 
     def send_buy(self, buy_price: Decimal):
         if buy_price > self.max_buy_price:
@@ -207,13 +211,7 @@ class GridBuyStrategy(CtaTemplate):
                 #  self.write_log(f"Buy order {normalized_buy_price} present. Skipping")
                 return
 
-        buy_volume: Decimal = self.buy_volume(buy_price)
-
-        if self.current_value > self.max_cash_invested:
-            self.write_log(f"SKIP buy due to too many cash invested")
-
-        if self.current_value < 0.2 * self.max_cash_invested:
-            buy_volume = Decimal(round(buy_volume * Decimal("1.3")))    # buy a bit more at the beginning, to sell it later
+        buy_volume: Decimal = self.volume_calculator.buy_volume(self.buy_amount_d(), buy_price, self.current_value_d())
 
         if buy_volume > 0:
             order_ids = self.buy(float(buy_price), float(buy_volume))
@@ -230,10 +228,10 @@ class GridBuyStrategy(CtaTemplate):
             volume_for_sell -= order.volume
 
         for sell_price in missing_sell_orders:
-            if self.current_value + self.total_sold - self.total_bought > 0:
+            # if self.current_value + self.total_sold - self.total_bought > 0:
                 # in profit, reduce if own > 66% max
-                self.write_log(f"ON PROFIT")
-            sell_volume = min(volume_for_sell, Decimal(ceil(self.buy_amount_d() / sell_price)))
+                # self.write_log(f"ON PROFIT")
+            sell_volume = self.volume_calculator.sell_volume(volume_for_sell, self.buy_amount_d(), sell_price)
             if sell_volume > 0:
                 order_ids = self.sell(float(sell_price), float(sell_volume))
                 self.write_log(f"SELL: {sell_volume} x {sell_price}")
@@ -267,7 +265,7 @@ class GridBuyStrategy(CtaTemplate):
         if trade.direction == Direction.LONG:
             self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
             del self.active_buy_orders[trade.vt_orderid]
-            self.total_bought += round(trade.price * float(trade.volume) * 1.0006, 2)
+            self.total_bought += round(float(trade.price) * float(trade.volume) * 1.0006, 2)
         elif trade.direction == Direction.SHORT:
             self.last_buy_price = float(self.prices_calculator.higher_buy_price(self.last_buy_price_d()))
             del self.active_sell_orders[trade.vt_orderid]
