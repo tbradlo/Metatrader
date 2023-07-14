@@ -1,3 +1,4 @@
+from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -20,7 +21,9 @@ from vnpy_ctastrategy import (
     OrderData,
 )
 from vnpy_ctastrategy.base import EngineType
+from vnpy_ctastrategy.strategies.tbradlo.base_prices_calculator import BasePricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.buy_percentage_prices_calculator import PercentagePricesCalculator
+from vnpy_ctastrategy.strategies.tbradlo.static_prices_calculator import StaticPricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.volume_calculator import VolumeCalculator
 
 
@@ -31,6 +34,9 @@ class Order:
 
     def __str__(self):
         return f"Price: {self.price}, Volume: {self.volume}"
+
+
+ExecutionTuple = namedtuple('ExecutionTuple', ['date', 'direction', 'price', 'volume'])
 
 
 class GridBuyStrategy(CtaTemplate):
@@ -45,6 +51,8 @@ class GridBuyStrategy(CtaTemplate):
     sell_orders_count: int = 2
     max_cash_invested: float = 10000.
     max_buy_price: float = 9999.
+    buy_steps_algo: str = "percent"
+    executions: [ExecutionTuple] = []
 
     parameters = [
         "buy_amount",
@@ -53,17 +61,20 @@ class GridBuyStrategy(CtaTemplate):
         "buy_orders_count",
         "sell_orders_count",
         "max_cash_invested",
-        "max_buy_price"
+        "max_buy_price",
+        "buy_steps_algo"
     ]
     variables = [
         "last_buy_price",
         "total_bought",
-        "total_sold"
+        "total_sold",
+        'executions'
     ]
 
     def __init__(self, cta_engine: Any, strategy_name: str, vt_symbol: str, setting: dict):
         self.active_sell_orders: Dict[str, Order] = {}
         self.active_buy_orders: Dict[str, Order] = {}
+        self.executions = []
 
         self.last_buy_price: float = 0.
         self.total_bought: float = 0.
@@ -72,7 +83,7 @@ class GridBuyStrategy(CtaTemplate):
         self.current_value: float = 0.
 
         self.started = False
-        self.prices_calculator: PercentagePricesCalculator
+        self.prices_calculator: BasePricesCalculator
         self.volume_calculator: VolumeCalculator
 
         super().__init__(cta_engine, strategy_name, vt_symbol, setting)
@@ -110,22 +121,32 @@ class GridBuyStrategy(CtaTemplate):
             return get_database().load_price_increment_data(symbol, Exchange(exchange))
 
     def set_price_increments(self, price_increments: SortedDict[Decimal, Decimal]):
-        self.prices_calculator = PercentagePricesCalculator(
-            buy_step=self.buy_step_d(),
-            sell_step=self.take_profit_d(),
-            price_increments=price_increments
-        )
+        if self.buy_steps_algo == "static":
+            self.prices_calculator = StaticPricesCalculator(
+                buy_step=self.buy_step_d(),
+                sell_step=self.take_profit_d(),
+                price_increments=price_increments
+            )
+        else:
+            self.prices_calculator = PercentagePricesCalculator(
+                buy_step=self.buy_step_d(),
+                sell_step=self.take_profit_d(),
+                price_increments=price_increments
+            )
 
     def on_init(self):
         self.active_buy_orders.clear()  # clear strategy state for backtesting
         self.active_sell_orders.clear()
         self.total_bought = self.total_sold = 0.
         self.set_price_increments(self.fetch_price_steps())
-        _, exchange = extract_vt_symbol(self.vt_symbol)
-        self.volume_calculator = VolumeCalculator(exchange, self.max_cash_invested_d(), self.write_log)
+        self.volume_calculator = VolumeCalculator(self.vt_symbol, self.max_cash_invested_d(), self.write_log)
         self.write_log("Strategy initialization completed")
 
     def on_start(self):
+        # convert deserialized array int tuple
+        for i in range(0, len(self.executions)):
+            if not isinstance(self.executions[i], ExecutionTuple):
+                self.executions[i] = ExecutionTuple(*self.executions[i])
 
         if self.get_engine_type() == EngineType.LIVE:
             oms_positions = self.cta_engine.main_engine.engines['oms'].positions
@@ -164,7 +185,7 @@ class GridBuyStrategy(CtaTemplate):
         self.started = False
 
     def on_tick(self, tick: TickData):
-        if not self.started:
+        if not self.started or tick.ask_price_1 < 0:
             return
         #self.write_log("on tick1")
         self.current_value = tick.bid_price_1 * self.pos
@@ -203,7 +224,7 @@ class GridBuyStrategy(CtaTemplate):
 
     def send_buy(self, buy_price: Decimal):
         if buy_price > self.max_buy_price:
-            self.write_log(f"Max buy price {self.max_buy_price} reached. Buy skipped")
+            # self.write_log(f"Max buy price {self.max_buy_price} reached. Buy skipped")
             return
 
         for order in self.active_buy_orders.values():
@@ -264,12 +285,22 @@ class GridBuyStrategy(CtaTemplate):
         old_price = self.last_buy_price_d()
         if trade.direction == Direction.LONG:
             self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
-            del self.active_buy_orders[trade.vt_orderid]
+            if trade.vt_orderid in self.active_buy_orders:
+                order = self.active_buy_orders[trade.vt_orderid]
+                order.volume -= trade.volume
+                if order.volume <= 0:
+                    del self.active_buy_orders[trade.vt_orderid]
             self.total_bought += round(float(trade.price) * float(trade.volume) * 1.0006, 2)
         elif trade.direction == Direction.SHORT:
             self.last_buy_price = float(self.prices_calculator.higher_buy_price(self.last_buy_price_d()))
-            del self.active_sell_orders[trade.vt_orderid]
+            if trade.vt_orderid in self.active_sell_orders:
+                order = self.active_sell_orders[trade.vt_orderid]
+                order.volume -= trade.volume
+                if order.volume <= 0:
+                    del self.active_sell_orders[trade.vt_orderid]
             self.total_sold += round(float(trade.price) * float(trade.volume) / 1.0006)
+
+        self.executions.append(ExecutionTuple(trade.datetime.strftime("%Y-%m-%dT%H:%M:%SZ"), trade.direction.value, trade.price, float(trade.volume)))
 
         self.write_log(f"OnTrade updated lastBuyPrice: {old_price} -> {self.last_buy_price_d()}")
 

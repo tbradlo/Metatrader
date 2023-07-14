@@ -1,18 +1,18 @@
 {
     "EUR USD": {
-        "pos": 19475,
+        "pos": 23895,
         "last_buy_price": 1.068,
         "total_bought": 0.0,
         "total_sold": 0.0
     },
     "EUR PLN": {
-        "pos": 19475,
-        "last_buy_price": 4.44,
-        "total_bought": 0.0,
+        "pos": 26325,
+        "last_buy_price": 4.4146,
+        "total_bought": 34830.64,
         "total_sold": 0.0
     },
     "USD PLN": {
-        "pos": 23426,
+        "pos": 54291,
         "last_buy_price": 4.01,
         "total_bought": 0.0,
         "total_sold": 0.0
@@ -30,69 +30,195 @@
         "total_sold": 0.0
     },
     "NEM USD": {
-        "pos": 70,
-        "last_buy_price": 42.94,
-        "total_bought": 3006.37,
+        "pos": 145,
+        "last_buy_price": 40.77,
+        "total_bought": 6135.4,
         "total_sold": 0.0
     },
     "GOLD USD": {
-        "pos": 220,
-        "last_buy_price": 16.5,
-        "total_bought": 3662.0,
+        "pos": 384,
+        "last_buy_price": 15.93,
+        "total_bought": 5823.04,
         "total_sold": 0.0
     },
     "NOD NOK": {
-        "pos": 49,
-        "last_buy_price": 135.36,
-        "total_bought": 6632.74,
-        "total_sold": 0.0
+        "pos": 70,
+        "last_buy_price": 132.0,
+        "total_bought": 13687.869999999999,
+        "total_sold": 5118.0,
+        "executions": [
+            [
+                "2023-07-12T12:55:17Z",
+                "S",
+                142.25,
+                36.0
+            ]
+        ]
     },
     "PBB_EUR": {
-        "pos": 337,
-        "last_buy_price": 6.71,
-        "total_bought": 2150.69,
+        "pos": 570,
+        "last_buy_price": 6.365,
+        "total_bought": 3658.79,
         "total_sold": 0.0
     },
     "HLAG EUR": {
-        "pos": 6,
-        "last_buy_price": 190.0,
+        "pos": 3,
+        "last_buy_price": 204.6,
         "total_bought": 1391.06,
-        "total_sold": 0.0
-    },
-    "MARA USD": {
-        "pos": 71,
-        "last_buy_price": 9.22,
-        "total_bought": 664.3299999999999,
-        "total_sold": 0.0
+        "total_sold": 658.0,
+        "executions": [
+            [
+                "2023-04-26T05:16:12Z",
+                "B",
+                313.80,
+                2.0
+            ],
+            [
+                "2023-06-15T04:16:50Z",
+                "B",
+                190.0,
+                4.0
+            ],
+            [
+                "2023-07-12T04:07:21Z",
+                "S",
+                219.4,
+                3.0
+            ]
+        ]
     },
     "EC USD": {
-        "pos": 103,
-        "last_buy_price": 9.5,
+        "pos": 8,
+        "last_buy_price": 10.41,
         "total_bought": 1008.5,
-        "total_sold": 0.0
+        "total_sold": 1013.0,
+        "executions": [
+            [
+                "2023-07-12T09:30:00Z",
+                "S",
+                10.78,
+                1.0
+            ],
+            [
+                "2023-07-12T09:30:00Z",
+                "S",
+                10.78,
+                4.0
+            ],
+            [
+                "2023-07-12T09:30:00Z",
+                "S",
+                10.78,
+                1.0
+            ],
+            [
+                "2023-07-12T09:30:00Z",
+                "S",
+                10.78,
+                41.0
+            ]
+        ]
     },
     "RIO USD": {
-        "pos": 40,
-        "last_buy_price": 63.075,
+        "pos": 32,
+        "last_buy_price": 63.83,
         "total_bought": 2524.0,
-        "total_sold": 0.0
+        "total_sold": 553.0,
+        "executions": [
+            [
+                "2023-07-13T15:12:32Z",
+                "S",
+                69.14,
+                8.0
+            ]
+        ]
     },
     "VALE USD": {
-        "pos": 183,
-        "last_buy_price": 13.685,
-        "total_bought": 2505.36,
+        "pos": 221,
+        "last_buy_price": 13.34,
+        "total_bought": 3012.58,
         "total_sold": 0.0
     },
     "MED USD": {
-        "pos": 19,
-        "last_buy_price": 79.93,
+        "pos": 13,
+        "last_buy_price": 81.24,
         "total_bought": 1519.67,
-        "total_sold": 0.0
+        "total_sold": 569.0
     },
     "SU USD": {
-        "pos": 17,
-        "last_buy_price": 30.44,
-        "total_bought": 518.48,
+        "pos": 40,
+        "last_buy_price": 28.4,
+        "total_bought": 1172.0700000000002,
         "total_sold": 0.0
+    },
+    "BAS EUR": {
+        "pos": 32,
+        "last_buy_price": 42.08,
+        "total_bought": 1358.77,
+        "total_sold": 0.0
+    },
+    "VNA EUR": {
+        "pos": 74,
+        "last_buy_price": 17.36,
+        "total_bought": 1309.91,
+        "total_sold": 0.0
+    },
+    "INTC USD": {
+        "pos": 141,
+        "last_buy_price": 31.81,
+        "total_bought": 4717.4,
+        "total_sold": 0.0
+    },
+    "CAN USD": {
+        "pos": 0,
+        "last_buy_price": 2.44,
+        "total_bought": 523.44,
+        "total_sold": 639.0,
+        "executions": [
+            [
+                "2023-07-12T09:30:02Z",
+                "S",
+                3.0,
+                6.0
+            ]
+        ]
+    },
+    "LXS EUR": {
+        "pos": 26,
+        "last_buy_price": 26.16,
+        "total_bought": 680.57,
+        "total_sold": 0.0
+    },
+    "EUR JPY": {
+        "pos": 23895,
+        "last_buy_price": 144.535,
+        "total_bought": 0.0,
+        "total_sold": 203430.0
+    },
+    "SBB.B SEK": {
+        "pos": 2383,
+        "last_buy_price": 5.235,
+        "total_bought": 25570.45,
+        "total_sold": 3590.0,
+        "execulions": []
+    },
+    "SPCE USD": {
+        "pos": 446,
+        "last_buy_price": 3.7,
+        "total_bought": 1760.06,
+        "total_sold": 0.0
+    },
+    "TEG EUR": {
+        "pos": 81,
+        "last_buy_price": 8.656,
+        "total_bought": 701.56,
+        "total_sold": 0.0
+    },
+    "MMM USD": {
+        "pos": 5,
+        "last_buy_price": 101.7,
+        "total_bought": 508.81,
+        "total_sold": 0.0,
+        "executions": []
     }
 }

@@ -1,13 +1,11 @@
 import math
 from decimal import Decimal
 
-from vnpy.trader.constant import Exchange
-
 
 class VolumeCalculator:
 
-    def __init__(self, exchange: Exchange, max_cash_to_invest: Decimal, write_log_f):
-        self.round_to = 1 if exchange != Exchange.TSEJ else 100  # on TSEJ you must buy multi of 100 stock
+    def __init__(self, vt_symbol: str, max_cash_to_invest: Decimal, write_log_f):
+        self.round_to = 1 if "-JPY-STK" not in vt_symbol else 100  # on TSEJ you must buy multi of 100 stock
         self.max_cash_to_invest = max_cash_to_invest
         self.write_log_f = write_log_f
 
