@@ -260,20 +260,6 @@
       "buy_steps_algo": "percent"
     }
   },
-  "CAN USD": {
-    "class_name": "GridBuyStrategy",
-    "vt_symbol": "CAN-USD-STK.SMART",
-    "setting": {
-      "buy_amount": 200.0,
-      "buy_step": 1.0377,
-      "take_profit": 1.25,
-      "buy_orders_count": 2,
-      "sell_orders_count": 2,
-      "max_cash_invested": 3000.0,
-      "max_buy_price": 2.5,
-      "buy_steps_algo": "percent"
-    }
-  },
   "LXS EUR": {
     "class_name": "GridBuyStrategy",
     "vt_symbol": "LXS-EUR-STK.GETTEX",
