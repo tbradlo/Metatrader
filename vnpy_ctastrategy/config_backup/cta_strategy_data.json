@@ -1,21 +1,33 @@
 {
     "EUR USD": {
-        "pos": 23895,
-        "last_buy_price": 1.068,
+        "pos": 25434,
+        "last_buy_price": 1.0738,
         "total_bought": 0.0,
-        "total_sold": 0.0
+        "total_sold": 1500.0,
+        "executions": [
+            {
+                "date": "2023-07-18T03:08:54Z",
+                "price": "1.1269",
+                "volume": "-1332"
+            }
+        ],
+        "profit": 0.0
     },
     "EUR PLN": {
-        "pos": 26325,
+        "pos": 26761,
         "last_buy_price": 4.4146,
         "total_bought": 34830.64,
-        "total_sold": 0.0
+        "total_sold": 0.0,
+        "executions": [],
+        "profit": 0.0
     },
     "USD PLN": {
-        "pos": 54291,
+        "pos": 55494,
         "last_buy_price": 4.01,
         "total_bought": 0.0,
-        "total_sold": 0.0
+        "total_sold": 0.0,
+        "executions": [],
+        "profit": 0.0
     },
     "PEAB.B @ SFB": {
         "pos": 583,
@@ -33,12 +45,13 @@
                 "price": "42.6",
                 "volume": "306.0"
             }
-        ]
+        ],
+        "profit": -508.12
     },
     "PBR USD": {
-        "pos": 98,
-        "last_buy_price": 13.2,
-        "total_bought": 1299.3,
+        "pos": 252,
+        "last_buy_price": 12.94,
+        "total_bought": 1902.7199999999998,
         "total_sold": 0.0,
         "executions": [
             {
@@ -50,8 +63,24 @@
                 "date": "2023-06-13T11:07:39Z",
                 "price": "13.2",
                 "volume": "49.0"
+            },
+            {
+                "date": "2023-06-17T15:34:00Z",
+                "price": "13.02",
+                "volume": "54.0"
+            },
+            {
+                "date": "2023-07-17T09:36:26Z",
+                "price": "13.03",
+                "volume": "54"
+            },
+            {
+                "date": "2023-07-17T09:36:26Z",
+                "price": "13.11",
+                "volume": "46"
             }
-        ]
+        ],
+        "profit": 93.74
     },
     "NEM USD": {
         "pos": 145,
@@ -89,7 +118,8 @@
                 "price": "40.77",
                 "volume": "13.0"
             }
-        ]
+        ],
+        "profit": 336.94
     },
     "GOLD USD": {
         "pos": 384,
@@ -127,7 +157,8 @@
                 "price": "15.93",
                 "volume": "42.0"
             }
-        ]
+        ],
+        "profit": 358.2
     },
     "NOD NOK": {
         "pos": 70,
@@ -150,7 +181,8 @@
                 "price": "142.25",
                 "volume": "-36.0"
             }
-        ]
+        ],
+        "profit": -9064.25
     },
     "PBB_EUR": {
         "pos": 570,
@@ -203,7 +235,8 @@
                 "price": "6.365",
                 "volume": "79.0"
             }
-        ]
+        ],
+        "profit": -838.745
     },
     "HLAG EUR": {
         "pos": 3,
@@ -226,7 +259,8 @@
                 "price": "219.4",
                 "volume": "-3.0"
             }
-        ]
+        ],
+        "profit": -1369.6
     },
     "EC USD": {
         "pos": 8,
@@ -254,7 +288,8 @@
                 "price": "10.78",
                 "volume": "-47.0"
             }
-        ]
+        ],
+        "profit": -1933.08
     },
     "RIO USD": {
         "pos": 32,
@@ -272,7 +307,8 @@
                 "price": "69.14",
                 "volume": "-8.0"
             }
-        ]
+        ],
+        "profit": -921.88
     },
     "VALE USD": {
         "pos": 221,
@@ -290,7 +326,8 @@
                 "price": "13.34",
                 "volume": "38.0"
             }
-        ]
+        ],
+        "profit": 98.195
     },
     "MED USD": {
         "pos": 13,
@@ -308,7 +345,8 @@
                 "price": "94.83",
                 "volume": "-6.0"
             }
-        ]
+        ],
+        "profit": -863.96
     },
     "SU USD": {
         "pos": 40,
@@ -326,7 +364,8 @@
                 "price": "28.4",
                 "volume": "23.0"
             }
-        ]
+        ],
+        "profit": -22.68
     },
     "BAS EUR": {
         "pos": 32,
@@ -344,13 +383,14 @@
                 "price": "42.08",
                 "volume": "16.0"
             }
-        ]
+        ],
+        "profit": 86.72
     },
     "VNA EUR": {
-        "pos": 74,
-        "last_buy_price": 17.36,
+        "pos": 23,
+        "last_buy_price": 18.63,
         "total_bought": 1309.91,
-        "total_sold": 0.0,
+        "total_sold": 1042.0,
         "executions": [
             {
                 "date": "2023-06-20T06:26:29Z",
@@ -361,8 +401,19 @@
                 "date": "2023-06-23T09:20:06Z",
                 "price": "17.36",
                 "volume": "38.0"
+            },
+            {
+                "date": "2023-07-19T09:05:00Z",
+                "price": "20.21",
+                "volume": "-26"
+            },
+            {
+                "date": "2023-07-19T09:19:09Z",
+                "price": "20.68",
+                "volume": "-25"
             }
-        ]
+        ],
+        "profit": -841.94
     },
     "INTC USD": {
         "pos": 141,
@@ -405,7 +456,8 @@
                 "price": "31.81",
                 "volume": "16.0"
             }
-        ]
+        ],
+        "profit": 128.98
     },
     "CAN USD": {
         "pos": 0,
@@ -425,13 +477,16 @@
                 "price": "26.16",
                 "volume": "26.0"
             }
-        ]
+        ],
+        "profit": 73.84
     },
     "EUR JPY": {
-        "pos": 23895,
+        "pos": 26761,
         "last_buy_price": 144.535,
         "total_bought": 0.0,
-        "total_sold": 203430.0
+        "total_sold": 203430.0,
+        "executions": [],
+        "profit": 0.0
     },
     "SBB.B SEK": {
         "pos": 2383,
@@ -469,7 +524,8 @@
                 "price": "6.178",
                 "volume": "-485.0"
             }
-        ]
+        ],
+        "profit": -18329.161
     },
     "SPCE USD": {
         "pos": 446,
@@ -502,7 +558,8 @@
                 "price": "3.7",
                 "volume": "95.0"
             }
-        ]
+        ],
+        "profit": -68.67
     },
     "TEG EUR": {
         "pos": 81,
@@ -515,18 +572,57 @@
                 "price": "8.656",
                 "volume": "81.0"
             }
-        ]
+        ],
+        "profit": 69.822
     },
     "MMM USD": {
-        "pos": 5,
-        "last_buy_price": 101.7,
-        "total_bought": 508.81,
+        "pos": 14,
+        "last_buy_price": 101.07,
+        "total_bought": 711.0699999999999,
         "total_sold": 0.0,
         "executions": [
             {
                 "date": "2023-07-13T09:30:01Z",
                 "price": "101.7",
                 "volume": "7.0"
+            },
+            {
+                "date": "2023-07-17T10:11:00Z",
+                "price": "101.07",
+                "volume": "2"
+            },
+            {
+                "date": "2023-07-17T10:16:42Z",
+                "price": "101.07",
+                "volume": "5"
+            }
+        ],
+        "profit": 4.41
+    },
+    "DIS USD": {
+        "pos": 5,
+        "last_buy_price": 85.52,
+        "total_bought": 427.86,
+        "total_sold": 0.0,
+        "executions": [
+            {
+                "date": "2023-07-18T09:30:24Z",
+                "price": "85.52",
+                "volume": "5"
+            }
+        ],
+        "profit": 0.0
+    },
+    "VOW3 EUR": {
+        "pos": 6,
+        "last_buy_price": 123.44,
+        "total_bought": 0.0,
+        "total_sold": 0.0,
+        "executions": [
+            {
+                "date": "2023-07-19T16:07:50Z",
+                "price": "123.44",
+                "volume": "6"
             }
         ],
         "profit": 0.0
