@@ -21,6 +21,7 @@ from vnpy_ctastrategy.base import EngineType
 from vnpy_ctastrategy.strategies.execution_tuple import ExecutionTuple
 from vnpy_ctastrategy.strategies.tbradlo.base_prices_calculator import BasePricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.buy_percentage_prices_calculator import PercentagePricesCalculator
+from vnpy_ctastrategy.strategies.tbradlo.orders_calculator import OrdersCalculator
 from vnpy_ctastrategy.strategies.tbradlo.static_prices_calculator import StaticPricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.volume_calculator import VolumeCalculator
 
@@ -62,27 +63,24 @@ class GridBuyStrategy(CtaTemplate):
     ]
     variables = [
         "last_buy_price",
-        "total_bought",
-        "total_sold",
         'executions',
         'profit'
     ]
 
     def __init__(self, cta_engine: Any, strategy_name: str, vt_symbol: str, setting: dict):
+        self.volume_calculator = None
+        self.orders_calculator = None
         self.active_sell_orders: Dict[str, Order] = {}
         self.active_buy_orders: Dict[str, Order] = {}
         self.executions = []
         self.profit = 0.
 
         self.last_buy_price: float = 0.
-        self.total_bought: float = 0.
-        self.total_sold: float = 0.
 
         self.current_value: Decimal = Decimal('0')
 
         self.started = False
         self.prices_calculator: BasePricesCalculator
-        self.volume_calculator: VolumeCalculator
 
         super().__init__(cta_engine, strategy_name, vt_symbol, setting)
 
@@ -133,9 +131,9 @@ class GridBuyStrategy(CtaTemplate):
     def on_init(self):
         self.active_buy_orders.clear()  # clear strategy state for backtesting
         self.active_sell_orders.clear()
-        self.total_bought = self.total_sold = 0.
         self.set_price_increments(self.fetch_price_steps())
         self.volume_calculator = VolumeCalculator(self.vt_symbol, self.max_cash_invested_d(), self.write_log)
+        self.orders_calculator = OrdersCalculator(self.prices_calculator, self.vt_symbol, self.max_cash_invested_d())
         self.write_log("Strategy initialization completed")
         #
         # self.cta_engine.sync_strategy_data(self)
@@ -199,7 +197,8 @@ class GridBuyStrategy(CtaTemplate):
 
         self.current_value = Decimal(str(bid_price * self.pos))
         self.bg.update_tick(tick) # TODO needed?
-        self.calculate(bid_price, ask_price)
+        if self.trading:
+            self.calculate(bid_price, ask_price)
 
         if '-STK' in self.vt_symbol:
             self.update_profit()
@@ -208,12 +207,13 @@ class GridBuyStrategy(CtaTemplate):
         paid = Decimal('0')
         received = Decimal('0')
         for execution in self.executions:
-            if execution.direction == 'S':
+            if execution.volume < 0:
                 received += execution.price * execution.volume
-            elif execution.direction == 'B':
+            elif execution.volume > 0:
                 paid += execution.price * execution.volume
         self.profit = float(received - paid + self.current_value)
         self.put_event()
+
 
     @staticmethod
     def to_decimal(float_value) -> Decimal:
@@ -227,8 +227,9 @@ class GridBuyStrategy(CtaTemplate):
 
         expected_buy_orders = self.prices_calculator.next_buys(self.last_buy_price_d(), self.buy_orders_count)
         expected_sell_orders = self.prices_calculator.sell_prices(self.last_buy_price_d(), self.sell_orders_count)
+        expected_reduce_orders = self.orders_calculator.reduce_orders(self.executions) # TODO switch into PriceVolume based on executions not lastPrice
 
-        self.remove_unexpected_orders(expected_buy_orders, expected_sell_orders)
+        self.remove_unexpected_orders(expected_buy_orders, expected_sell_orders, expected_reduce_orders)
 
         active_buy_order_prices = {order.price for order in self.active_buy_orders.values()}
         active_sell_order_prices = {order.price for order in self.active_sell_orders.values()}
@@ -236,14 +237,16 @@ class GridBuyStrategy(CtaTemplate):
         missing_buy_orders = [price for price in expected_buy_orders if price not in active_buy_order_prices]
         missing_sell_orders = [price for price in expected_sell_orders if
                                price not in active_sell_order_prices and price]
+        missing_reduce_orders = [priceVol for priceVol in expected_reduce_orders if
+                                 priceVol[0] not in active_sell_order_prices]
 
-        self.send_missing_orders(missing_buy_orders, missing_sell_orders)
+        self.send_missing_orders(missing_buy_orders, missing_sell_orders, missing_reduce_orders)
 
     def on_bar(self, bar: BarData):  # TODO narazie po 1m barach, bo by default ticki pobiera z RData a nie z IB
         if not self.started:
             return
         # self.write_log("on bar1")  # bar.datetime.timestamp() > datetime.strptime("2022-01-20","%Y-%m-%d").timestamp()
-        self.current_value = bar.close_price * self.pos
+        self.current_value = Decimal(str(bar.close_price * self.pos))
         self.calculate(self.to_decimal(bar.low_price), self.to_decimal(bar.high_price))
 
     def send_buy(self, buy_price: Decimal):
@@ -264,7 +267,7 @@ class GridBuyStrategy(CtaTemplate):
             if order_ids:
                 self.active_buy_orders[order_ids[0]] = Order(buy_price, buy_volume)
 
-    def send_missing_orders(self, missing_buy_orders, missing_sell_orders):
+    def send_missing_orders(self, missing_buy_orders, missing_sell_orders, missing_reduce_pv_orders):
         for buy_price in missing_buy_orders:
             self.send_buy(buy_price)
 
@@ -272,10 +275,14 @@ class GridBuyStrategy(CtaTemplate):
         for order in self.active_sell_orders.values():
             volume_for_sell -= order.volume
 
+        for sell_price, sell_volume in missing_reduce_pv_orders:
+            order_ids = self.sell(float(sell_price), float(sell_volume))
+            self.write_log(f"SELL REDUCE: {sell_volume} x {sell_price}")
+            if order_ids:
+                self.active_sell_orders[order_ids[0]] = Order(sell_price, sell_volume)
+            volume_for_sell -= sell_volume
+
         for sell_price in missing_sell_orders:
-            # if self.current_value + self.total_sold - self.total_bought > 0:
-                # in profit, reduce if own > 66% max
-                # self.write_log(f"ON PROFIT")
             sell_volume = self.volume_calculator.sell_volume(volume_for_sell, self.buy_amount_d(), sell_price)
             if sell_volume > 0:
                 order_ids = self.sell(float(sell_price), float(sell_volume))
@@ -284,19 +291,23 @@ class GridBuyStrategy(CtaTemplate):
                     self.active_sell_orders[order_ids[0]] = Order(sell_price, sell_volume)
                 volume_for_sell -= sell_volume
 
-    def remove_unexpected_orders(self, expected_buy_orders, expected_sell_orders):
+    def remove_unexpected_orders(self, expected_buy_orders, expected_sell_orders, expected_reduce_orders):
         """
         Remove unexpected orders: dividend cuts case (dividend is cut out of buy/sell order)
         """
+        expected_sell_and_reduce_prices = expected_sell_orders + [pv[0] for pv in expected_reduce_orders]
+
         buy_orders_to_close = {orderId: order.price for orderId, order in self.active_buy_orders.items() if
                                order.price not in expected_buy_orders}
         sell_orders_to_close = {orderId: order.price for orderId, order in self.active_sell_orders.items() if
-                                order.price not in expected_sell_orders}
+                                order.price not in expected_sell_and_reduce_prices}
         for orderId in buy_orders_to_close.keys():
+            self.write_log("Cancel BUY: " + str(self.active_buy_orders[orderId].price))
             self.cancel_order(orderId)
             del self.active_buy_orders[orderId]
             self.write_log("Cancelled BUY order")
         for orderId in sell_orders_to_close.keys():
+            self.write_log("Cancel SELL: " + str(self.active_sell_orders[orderId].price))
             self.cancel_order(orderId)
             del self.active_sell_orders[orderId]
             self.write_log("Cancelled SELL order")
@@ -307,25 +318,32 @@ class GridBuyStrategy(CtaTemplate):
     def on_trade(self, trade: TradeData):
         self.write_log(f"OnTrade called lastBuyPrice: {trade.vt_symbol} {trade.direction}")
         old_price = self.last_buy_price_d()
+        trade_volume = 0
         if trade.direction == Direction.LONG:
-            self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
+            trade_volume = trade.volume
             if trade.vt_orderid in self.active_buy_orders:
                 order = self.active_buy_orders[trade.vt_orderid]
                 order.volume -= trade.volume
                 if order.volume <= 0:
+                    self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
                     del self.active_buy_orders[trade.vt_orderid]
-            self.total_bought += round(float(trade.price) * float(trade.volume) * 1.0006, 2)
+
         elif trade.direction == Direction.SHORT:
-            self.last_buy_price = float(self.prices_calculator.higher_buy_price(self.last_buy_price_d()))
+            trade_volume = -1 * trade.volume
             if trade.vt_orderid in self.active_sell_orders:
                 order = self.active_sell_orders[trade.vt_orderid]
                 order.volume -= trade.volume
                 if order.volume <= 0:
+                    self.last_buy_price = float(self.prices_calculator.higher_buy_price(self.last_buy_price_d()))
                     del self.active_sell_orders[trade.vt_orderid]
-            self.total_sold += round(float(trade.price) * float(trade.volume) / 1.0006)
+                    if self.pos_d() == Decimal('0'):
+                        self.write_log("Everything sold, Algorithm finished. Clearing executions")
+                        self.last_buy_price = 0.0
+                        self.executions.clear()
 
-        self.executions.append(
-            ExecutionTuple(trade.datetime.strftime("%Y-%m-%dT%H:%M:%SZ"), trade.direction.value, trade.price, float(trade.volume)))
+        if self.pos > 0:
+            self.executions.append(
+                ExecutionTuple(trade.datetime.strftime("%Y-%m-%dT%H:%M:%SZ"), Decimal(str(trade.price)), Decimal(str(trade_volume))))
 
         self.write_log(f"OnTrade updated lastBuyPrice: {old_price} -> {self.last_buy_price_d()}")
 

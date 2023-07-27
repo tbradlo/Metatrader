@@ -1,3 +1,3 @@
 from collections import namedtuple
 
-ExecutionTuple = namedtuple('ExecutionTuple', ['date', 'direction', 'price', 'volume'])
+ExecutionTuple = namedtuple('ExecutionTuple', ['date', 'price', 'volume'])
