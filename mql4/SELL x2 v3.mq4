@@ -108,7 +108,7 @@ void OnTick(void)
       return;
    }
 
-    comment = "";
+    comment = inactive ? "INACTIVE " : "";
     readPositions();
 
     calculate();
@@ -259,7 +259,7 @@ void ButtonPressed (const long chartID, const string action)
      ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrBlack); // button pressed
      if (action == "CloseALL_btn") CloseAll_Button (action);
      if (action == "CloseHalf_btn") CloseHalf_Button (action);
-     if (action == "ClearAll_btn") ClearAll_Button (action);
+     if (action == "ClearALL_btn") ClearAll_Button (action);
      //if (action == "Delete___btn") Delete___Button (action);
      //if (action == "SLplusOnebtn") SLplus1__Button (action);
      //if (action == "DeleteSL_btn") DeleteSL_Button (action);
@@ -276,6 +276,7 @@ int CloseAll_Button (const string action)
   {
    int ticket;
    readPositions();
+
    for (int i=0; i< totalOpenedPositions; i++){
       Position position = openPositions[i];
       ticket = OrderClose (position.ticket, position.lots, MarketInfo (OrderSymbol(), MODE_ASK), 0.01*Ask, clrNONE);

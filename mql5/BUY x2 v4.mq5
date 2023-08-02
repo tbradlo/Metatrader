@@ -4,7 +4,7 @@
 #include <Trade\Trade.mqh>
 CTrade         m_trade;
 
-input string expertName = "sell*2";
+input string expertName = "buy*2";
 input int expertId = 34;
 
 input double positionsSize = 0.01; //how big positions to open
@@ -82,13 +82,13 @@ void OnInit(void)
      ObjectSetInteger (0,"SL_Edit", OBJPROP_XDISTANCE, 140);
      ObjectSetInteger (0,"SL_Edit", OBJPROP_YDISTANCE, 025);
      ObjectSetInteger (0,"SL_Edit", OBJPROP_ALIGN, ALIGN_CENTER);
-     double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+     double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 
-     ObjectSetString (0,"SL_Edit", OBJPROP_TEXT, bidPrice);
-     accumulateFromPrice = inAccumulateFromPrice != 0.? inAccumulateFromPrice : bidPrice;
+     ObjectSetString (0,"SL_Edit", OBJPROP_TEXT, askPrice);
+     accumulateFromPrice = inAccumulateFromPrice != 0.? inAccumulateFromPrice : askPrice;
 
      if (inNextPositionByPoints == 0. && stopLoss != 0.) {
-        double range = MathAbs(stopLoss - accumulateFromPrice) * 0.8;
+        double range = MathAbs(accumulateFromPrice - stopLoss) * 0.8;
         nextPositionByPoints = range / maxPositions;
      } else {
         nextPositionByPoints = inNextPositionByPoints;
@@ -110,8 +110,8 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
-   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   if ((stopLoss > 0 && askPrice >= stopLoss) || inactive){
+   double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   if ((stopLoss > 0 && bidPrice <= stopLoss) || inactive){
       inactive = true;
       comment = "stopLoss executed: " + stopLoss;
       return;
@@ -132,7 +132,7 @@ void readPositions(){
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
       long ticket = OrderGetTicket(i);
       if (OrderSelect(ticket) && (expertId == OrderGetInteger(ORDER_MAGIC) || expertId == 0) && _Symbol == OrderGetString(ORDER_SYMBOL)) {
-         if (OrderGetInteger(ORDER_TYPE) == ORDER_TYPE_SELL_LIMIT) {
+         if (OrderGetInteger(ORDER_TYPE) == ORDER_TYPE_BUY_LIMIT) {
             Position* p = new Position(ticket, OrderGetDouble(ORDER_VOLUME_CURRENT), 0, OrderGetDouble(ORDER_PRICE_OPEN), NormPrice(OrderGetDouble(ORDER_SL)));
             ArrayAppend(limitPositions, p);
             delete p;
@@ -145,7 +145,7 @@ void readPositions(){
       long ticket = PositionGetTicket(i);
       if(PositionSelectByTicket(ticket) && (expertId == PositionGetInteger(POSITION_MAGIC) || expertId == 0) && _Symbol == PositionGetString(POSITION_SYMBOL))
         {
-         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL)
+         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
            {
               Position* p = new Position(ticket, PositionGetDouble(POSITION_VOLUME), PositionGetDouble(POSITION_PROFIT), PositionGetDouble(POSITION_PRICE_OPEN), NormPrice(PositionGetDouble(POSITION_SL)));
               ArrayAppend(openPositions, p);
@@ -166,7 +166,7 @@ void OnTrade(){
    if (totalOpenedPositions > positionsToOpen){ //if opened more than expected
       double totalLots = 0.0;
       double totalWagedOpenPrice = 0.0;
-      for (int i=0; i<totalOpenedPositions - positionsToOpen; i++){
+      for (int i=positionsToOpen; i<totalOpenedPositions; i++){
          Position position = openPositions[i];
          totalLots += position.lots;
          totalWagedOpenPrice += position.openPrice * position.lots;
@@ -176,7 +176,7 @@ void OnTrade(){
       //double profit = (takeProfitPrice - askPrice) / MODE_TICKSIZE * MODE_TICKVALUE * totalLots
 
       double takeProfitPrice = NormPrice(totalWagedOpenPrice / totalLots);
-      for (int i=0; i<totalOpenedPositions - positionsToOpen; i++){
+      for (int i=positionsToOpen; i<totalOpenedPositions; i++){
          Position position = openPositions[i];
          m_trade.PositionModify(position.ticket, stopLoss, takeProfitPrice);
       }
@@ -206,51 +206,51 @@ void openOrdersLogic(){
       totalProfit += openPositions[i].profit;
    }
 
-   comment += ", SELL: " + totalOpenedPositions + ", Pending SELL: " + totalLimitPositions + ", Profit: " + DoubleToString(totalProfit,2);
+   comment += ", BUY: " + totalOpenedPositions + ", Pending BUY: " + totalLimitPositions + ", Profit: " + DoubleToString(totalProfit,2);
 
-   double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    // Place initial Orders
    if (totalOpenedPositions + totalLimitPositions  == 0) {
-      if (bidPrice >= accumulateFromPrice){
+      if (askPrice <= accumulateFromPrice){
         for(int i=0; i<initialPositions; i++){
-            openOrder(ORDER_TYPE_SELL);
+            openOrder(ORDER_TYPE_BUY);
         }
       } else {
-         openOrder(ORDER_TYPE_SELL_LIMIT, accumulateFromPrice);
+         openOrder(ORDER_TYPE_BUY_LIMIT, accumulateFromPrice);
       }
    } else if (totalOpenedPositions + totalLimitPositions < maxPositions) { // must be in next cycle to refresh positions
 
       double nextOpenPrice;
       // Append new Open Limits if missing
       if (totalLimitPositions > 0){
-         nextOpenPrice = NormPrice(limitPositions[totalLimitPositions-1].openPrice + nextPositionByPoints);
+         nextOpenPrice = NormPrice(limitPositions[0].openPrice - nextPositionByPoints);
       } else {
-         nextOpenPrice = NormPrice(openPositions[totalOpenedPositions-1].openPrice + nextPositionByPoints);
+         nextOpenPrice = NormPrice(openPositions[0].openPrice - nextPositionByPoints);
       }
 
-      nextOpenPrice = MathMax(nextOpenPrice, bidPrice);
+      nextOpenPrice = MathMin(nextOpenPrice, askPrice);
 
       for (int j=totalOpenedPositions + totalLimitPositions; j < maxPositions; j++) {
-         openOrder(ORDER_TYPE_SELL_LIMIT, nextOpenPrice);
-         nextOpenPrice = NormPrice(nextOpenPrice + nextPositionByPoints);
+         openOrder(ORDER_TYPE_BUY_LIMIT, nextOpenPrice);
+         nextOpenPrice = NormPrice(nextOpenPrice - nextPositionByPoints);
       }
    } else if (piramide && totalOpenedPositions > 0 && totalOpenedPositions < positionsToOpen && totalLimitPositions > 0) {
       // Price goes in profitable dicection (piramide) scenario, open opposite orders as well if too few of them
 
-      double nextPiramideOpenPrice = NormPrice(openPositions[0].openPrice - nextPositionByPoints);
-      if (bidPrice <= nextPiramideOpenPrice) {
-         openOrder(ORDER_TYPE_SELL);
-         m_trade.OrderDelete(limitPositions[totalLimitPositions-1].ticket);
+      double nextPiramideOpenPrice = NormPrice(openPositions[totalOpenedPositions-1].openPrice + nextPositionByPoints);
+      if (askPrice >= nextPiramideOpenPrice) {
+         openOrder(ORDER_TYPE_BUY);
+         m_trade.OrderDelete(limitPositions[0].ticket);
       }
    }
 }
 
 void openOrder(int type, double price = 0){
-   if (type == ORDER_TYPE_SELL){
-      if (price == 0) price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      m_trade.Sell(positionsSize, _Symbol,  price, stopLoss, 0, expertName + " " + expertId);
-   } else if (type == ORDER_TYPE_SELL_LIMIT){
-      m_trade.SellLimit(positionsSize, price, _Symbol, stopLoss, 0, ORDER_TIME_GTC, expiration, expertName + " " + expertId);
+   if (type == ORDER_TYPE_BUY){
+      if (price == 0) price = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      m_trade.Buy(positionsSize, _Symbol,  price, stopLoss, 0, expertName + " " + expertId);
+   } else if (type == ORDER_TYPE_BUY_LIMIT){
+      m_trade.BuyLimit(positionsSize, price, _Symbol, stopLoss, 0, ORDER_TIME_GTC, expiration, expertName + " " + expertId);
    }
 }
 
@@ -293,7 +293,7 @@ int CloseAll_Button (const string action)
    for (int i=0; i< totalOpenedPositions; i++){
       Position position = openPositions[i];
       ticket = m_trade.PositionClose(position.ticket);
-      openOrder(ORDER_TYPE_SELL_LIMIT, position.openPrice);
+      openOrder(ORDER_TYPE_BUY_LIMIT, position.openPrice);
      if (ticket == -1) Print ("Error : ",  GetLastError());
      if (ticket >   0) Print ("Position ", position.ticket ," closed");
    }
@@ -331,7 +331,7 @@ int CloseHalf_Button (const string action)
    for (int i=totalOpenedPositions-1; i> toCloseCnt; i--){
       Position position = openPositions[i];
       ticket = m_trade.PositionClose(position.ticket);
-      openOrder(ORDER_TYPE_SELL_LIMIT, position.openPrice);
+      openOrder(ORDER_TYPE_BUY_LIMIT, position.openPrice);
      if (ticket == -1) Print ("Error : ",  GetLastError());
      if (ticket >   0) Print ("Position ", position.ticket ," closed");
    }
@@ -387,7 +387,7 @@ int BreakEven_Button (const string action)
 
 int Open_Button (const string action)
   {
-   openOrder(ORDER_TYPE_SELL);
+   openOrder(ORDER_TYPE_BUY);
    return(0);
   }
 

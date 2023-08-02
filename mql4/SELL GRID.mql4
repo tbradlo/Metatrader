@@ -34,6 +34,7 @@ input double minSellTP = 14500;
 input double buyPositionsSize = 0.05; //BUY position size
 input int buyPositionsToOpen = 4; //How many BUYs to keep open
 input double nextBuyPositionByPoints = 150;
+input int maxBuyPositions = 4;
 
 // BUY Stoch params
 input int stoch_K_Period = 14;
@@ -280,7 +281,7 @@ double NormPrice(double price)
 bool stochDoubleBuyLogic()
   {
 //open BUY orders on BUY signal
-   if(buyPositionsToOpen > 0)
+   if(buyPositionsToOpen > 0 && totalBuyPositions < maxBuyPositions)
      {
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double nextBuyPrice = totalBuyPositions == 0 ? askPrice : NormPrice(buyPositions[0].openPrice - nextBuyPositionByPoints);
@@ -378,7 +379,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    ResetLastError();
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
-      if(action == "SellOne_btn")
+      if(action == "BuyOne_btn")
         {
          ButtonPressed(0, action);
         }
@@ -392,8 +393,8 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
 void ButtonPressed(const long chartID, const string action)
   {
    ObjectSetInteger(chartID, action, OBJPROP_BORDER_COLOR, clrBlack);  // button pressed
-   if(action == "SellOne_btn")
-      SellOne_Button(action);
+   if(action == "BuyOne_btn")
+      BuyOne_Button(action);
    Sleep(2000);
    ObjectSetInteger(chartID, action, OBJPROP_BORDER_COLOR, clrYellow);  // button unpressed
    ObjectSetInteger(chartID, action, OBJPROP_STATE, false);  // button unpressed
@@ -403,9 +404,9 @@ void ButtonPressed(const long chartID, const string action)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-int SellOne_Button(const string action)
+int BuyOne_Button(const string action)
   {
-   openOrder(ORDER_TYPE_SELL);
+   openOrder(ORDER_TYPE_BUY);
    return(0);
   }
 
@@ -415,7 +416,7 @@ int SellOne_Button(const string action)
 void CreateButtons()
   {
    int Button_Height = (int)(Font_Size*2.8);
-   if(!ButtonCreate(0, "SellOne_btn", 0, 10 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
+   if(!ButtonCreate(0, "BuyOne_btn", 0, 10 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "B", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
       return;
    ChartRedraw();
   }
@@ -461,7 +462,7 @@ bool ButtonCreate(const long chart_ID = 0, const string name = "Button", const i
 //+------------------------------------------------------------------+
 void DeleteButtons()
   {
-   ButtonDelete(0, "SellOne_btn");
+   ButtonDelete(0, "BuyOne_btn");
   }
 
 //+------------------------------------------------------------------+
