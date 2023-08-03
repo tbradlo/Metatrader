@@ -98,7 +98,6 @@ void OnInit(void)
    CreateLabel("btmOwns", 10, 30);
 
    CreateButtons();
-   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 //OnTick();
   }
 
@@ -117,8 +116,6 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
-   double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-
    headerLine = "";
    ownsLine = "";
    readPositions();
@@ -223,9 +220,9 @@ void openSellOrdersLogic()
       }
 
    // Place initial Orders
-   if (totalSellPositions == 0) {
+   if (totalSellPositions == 0 && totalBuyPositions == 0) {
       if (buyPositionsToOpen > 0){
-         openOrder(OP_BUY);
+         openOrder(ORDER_TYPE_BUY);
       }
    }
 
@@ -290,6 +287,7 @@ bool stochDoubleBuyLogic()
       if(askPrice <= nextBuyPrice && stochSignal(PERIOD_M15) == "buy")
         {
          openOrder(ORDER_TYPE_BUY);
+         //headerLine += "B NOW: " + totalBuyPositions;
          return true;
         }
      }
@@ -462,7 +460,7 @@ bool ButtonCreate(const long chart_ID = 0, const string name = "Button", const i
 //+------------------------------------------------------------------+
 void DeleteButtons()
   {
-   ButtonDelete(0, "BuyOne_btn");
+   ButtonDelete(0, "SellOne_btn");
   }
 
 //+------------------------------------------------------------------+
