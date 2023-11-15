@@ -1,7 +1,7 @@
 #property strict
 
 /**
-    v0.8, 17 Apr 2023
+    v0.9, 15 Nov 2023
     Prototype of Grid Bot - similar to 3Commas Grid Bot
     Opens buy order every inNextPositionByPoints and sets Take Profit of takeProfitPoints.
     Good candidate can be NASDAQ being close to the bottom, maybe OIL as well.
@@ -34,6 +34,7 @@ input int stochBtm = 20;
 
 
 string comment = "";
+string ownsLine = "";
 
 class Position
   {
@@ -83,6 +84,7 @@ extern int Font_Size = 8;
 void OnInit(void)
   {
      CreateButtons();
+     CreateLabel("btmOwns", 5, 60);
      double askPrice = MarketInfo(Symbol(), MODE_ASK);
      nextPositionByPoints = inNextBuyPositionByPoints;
      positionSize = inPositionsSize;
@@ -115,6 +117,7 @@ void OnTick(void)
     double bidPrice = MarketInfo(Symbol(), MODE_BID);
 
     comment = inactive ? "INACTIVE " : "";
+    ownsLine = "";
     readPositions();
 
     calculate();
@@ -125,10 +128,13 @@ void OnTick(void)
     }
 
     Comment(comment);
-
-
-
+    WriteLabel("btmOwns", ownsLine);
 }
+
+void WriteLabel(string sName,string sValue)
+  {
+   ObjectSetString(0,sName,OBJPROP_TEXT,sValue);
+  }
 
 void closeAllOrders() {
    for (int i = OrdersTotal() - 1; i >= 0; i--) {
@@ -230,6 +236,8 @@ void openBuyOrders()
   {
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextPositionByPoints) * nextPositionByPoints);
+
+      ownsLine += " NextB: " + (closestTakeProfit - takeProfitPoints - nextPositionByPoints);
 
       if (totalBuyPositions == 0 || buyPositionsTp[0].takeProfit > closestTakeProfit){
          openOrder(OP_BUY, 0, closestTakeProfit); //regular
@@ -344,6 +352,7 @@ void ButtonPressed (const long chartID, const string action)
     {
      ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrBlack); // button pressed
      if (action == "SellOne_btn") SellOne_Button (action);
+     if (action == "SellLimit_btn") SellLimit_Button(action);
      if (action == "ClearALL_btn") ClearAll_Button (action);
      Sleep (2000);
      ObjectSetInteger (chartID, action, OBJPROP_BORDER_COLOR, clrYellow); // button unpressed
@@ -351,7 +360,15 @@ void ButtonPressed (const long chartID, const string action)
      ChartRedraw();
     }
 
-int SellOne_Button (const string action)
+  int SellLimit_Button (const string action)
+  {
+   double askPrice = MarketInfo(_Symbol, MODE_ASK);
+   double slPrice = NormPrice(askPrice * 1.01);
+   openOrder(OP_SELLLIMIT, slPrice);
+   return(0);
+  }
+
+  int SellOne_Button (const string action)
   {
    openOrder(OP_SELL);
    return(0);
@@ -362,30 +379,30 @@ int SellOne_Button (const string action)
    inactive = true;
    int ticket;
    readPositions();
-   double bidPrice = MarketInfo(OrderSymbol(), MODE_BID);
-   double askPrice = MarketInfo(OrderSymbol(), MODE_ASK);
+   double bidPrice = MarketInfo(_Symbol, MODE_BID);
+   double askPrice = MarketInfo(_Symbol, MODE_ASK);
    for (int i=0; i<totalBuyPositions; i++){
       Position position = buyPositions[i];
       ticket = OrderClose (position.ticket, position.lots, bidPrice, 0.01*Bid, clrNONE);
      if (ticket == -1) Print ("Error : ",  GetLastError());
-     if (ticket >   0) Print ("Position ", OrderTicket() ," closed");
+     if (ticket >   0) Print ("Position ", position.ticket ," closed");
    }
    for (int i=0; i<totalSellPositions; i++){
       Position position = sellPositions[i];
       ticket = OrderClose (position.ticket, position.lots, askPrice, 0.01*Ask, clrNONE);
      if (ticket == -1) Print ("Error : ",  GetLastError());
-     if (ticket >   0) Print ("Position ", OrderTicket() ," closed");
+     if (ticket >   0) Print ("Position ", position.ticket ," closed");
    }
 
    return(0);
   }
 
-
  void CreateButtons()
      {
       int Button_Height = (int)(Font_Size*2.8);
       if (!ButtonCreate (0, "SellOne_btn", 0, 002 + 000 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
-      if (!ButtonCreate (0, "ClearALL_btn", 0, 002 + 035 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "CLR", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
+      if (!ButtonCreate (0, "SellLimit_btn", 0, 002 + 040 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "SL", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
+      if (!ButtonCreate (0, "ClearALL_btn", 0, 002 + 075 + Move_X, 020 + 005 + Move_Y, Button_Width + 000, Button_Height, Corner, "CLR", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow)) return;
 
       ChartRedraw();
      }
@@ -425,6 +442,7 @@ int SellOne_Button (const string action)
      {
       ButtonDelete (0, "SellOne_btn");
       ButtonDelete(0, "ClearALL_btn");
+      ButtonDelete(0, "SellLimit_btn");
      }
 
  bool ButtonDelete (const long chart_ID=0, const string name="Button")
@@ -437,3 +455,22 @@ int SellOne_Button (const string action)
       }
     return(true);
    }
+
+void CreateLabel(
+   const string objectName,
+   const int xDistance = 10,
+   const int yDistance = 10
+)
+  {
+   ObjectDelete(0, objectName);
+   if(ObjectCreate(0,objectName,OBJ_LABEL, 0,0,0))
+     {
+      ObjectSetInteger(0,objectName,OBJPROP_CORNER,CORNER_LEFT_LOWER);
+      ObjectSetInteger(0,objectName,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
+      ObjectSetInteger(0,objectName,OBJPROP_FONTSIZE,8);
+      ObjectSetInteger(0,objectName,OBJPROP_XDISTANCE,xDistance);
+      ObjectSetInteger(0,objectName,OBJPROP_YDISTANCE,yDistance);
+     }
+   else
+      Print("Failed to create the object OBJ_LABEL btmComment, Error code = ", GetLastError());
+  }
