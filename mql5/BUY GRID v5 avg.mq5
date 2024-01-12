@@ -88,14 +88,14 @@ int totalSellPositions = 0;
 
 bool inactive = false;
 
-extern int Corner = 2;
-extern int Move_X = 0;
-extern int Move_Y = 0;
-extern string B00001 = "============================";
-extern int Button_Width = 30;
-extern string Font_Type = "Arial Bold";
-extern color Font_Color = clrWhite;
-extern int Font_Size = 8;
+int Corner = 2;
+int Move_X = 0;
+int Move_Y = 0;
+string B00001 = "============================";
+int Button_Width = 30;
+string Font_Type = "Arial Bold";
+color Font_Color = clrWhite;
+int Font_Size = 8;
 
 int handleStoch;
 //+------------------------------------------------------------------+
@@ -259,7 +259,7 @@ void openBuyOrders()
   {
       double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
       double closestTakeProfit = NormPrice(MathCeil((askPrice + takeProfitPoints) / nextBuyPositionByPoints) * nextBuyPositionByPoints);
-
+      //ownsLine += " cTP:" + closestTakeProfit;
       ownsLine += " NextB: " + (closestTakeProfit - takeProfitPoints - nextBuyPositionByPoints);
       if (totalBuyPositions > 0){
          ownsLine += " / " + (buyPositions[0].openPrice - nextBuyPositionByPoints/2);
@@ -285,10 +285,17 @@ void openOrder(int type, double price = 0, double takeProfit = 0)
      {
       m_trade.Buy(buyPositionsSize,_Symbol,price,0,NormPrice(takeProfit),expertName + " " + expertId);
      }
-   else
-      if(type == ORDER_TYPE_SELL)
+   else if(type == ORDER_TYPE_SELL)
         {
          m_trade.Sell(sellPositionSize,_Symbol,price,0,NormPrice(takeProfit),expertName + " " + expertId);
+        }
+   else if(type == ORDER_TYPE_SELL_LIMIT)
+        {
+         m_trade.SellLimit(sellPositionSize,price,_Symbol,0,NormPrice(takeProfit),0,0,expertName + " " + expertId);
+        }
+   else if(type == ORDER_TYPE_BUY_LIMIT)
+        {
+         m_trade.BuyLimit(buyPositionsSize, price,_Symbol,0,NormPrice(takeProfit),0,0,expertName + " " + expertId);
         }
   }
 
@@ -429,7 +436,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    ResetLastError();
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
-      if(action == "SellOne_btn")
+      if(action == "SellOne_btn" || action == "SellLimit_btn" || action == "BuyLimit_btn")
         {
          ButtonPressed(0, action);
         }
@@ -445,6 +452,14 @@ void ButtonPressed(const long chartID, const string action)
    ObjectSetInteger(chartID, action, OBJPROP_BORDER_COLOR, clrBlack);  // button pressed
    if(action == "SellOne_btn")
       SellOne_Button(action);
+   if(action == "SellLimit_btn")
+      SellLimit_Button(action);
+   if(action == "BuyOne_btn"){
+      BuyOne_Button(action);
+   }
+   if(action == "BuyLimit_btn"){
+      BuyLimit_Button(action);
+   }
    Sleep(2000);
    ObjectSetInteger(chartID, action, OBJPROP_BORDER_COLOR, clrYellow);  // button unpressed
    ObjectSetInteger(chartID, action, OBJPROP_STATE, false);  // button unpressed
@@ -460,6 +475,29 @@ int SellOne_Button(const string action)
    return(0);
   }
 
+int BuyOne_Button(const string action)
+  {
+   openOrder(ORDER_TYPE_BUY);
+   return(0);
+  }
+
+int SellLimit_Button(const string action)
+  {
+   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double limitPrice = NormPrice(askPrice * 1.01);
+   openOrder(ORDER_TYPE_SELL_LIMIT, limitPrice);
+   return(0);
+  }
+
+int BuyLimit_Button(const string action)
+  {
+   double bidPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double limitPrice = NormPrice(bidPrice * 0.99);
+   openOrder(ORDER_TYPE_BUY_LIMIT, limitPrice);
+   Alert(limitPrice);
+   return(0);
+  }
+
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -468,6 +506,13 @@ void CreateButtons()
    int Button_Height = (int)(Font_Size*2.8);
    if(!ButtonCreate(0, "SellOne_btn", 0, 10 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "S", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
       return;
+   if(!ButtonCreate(0, "SellLimit_btn", 0, 10 + 40 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "SL", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
+      return;
+   if(!ButtonCreate(0, "BuyOne_btn", 0, 10 + 80 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "B", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
+      return;
+   if(!ButtonCreate(0, "BuyLimit_btn", 0, 10 + 120 + Move_X, 55 + Move_Y, Button_Width + 000, Button_Height, CORNER_LEFT_LOWER, "BL", Font_Type, Font_Size, Font_Color, clrTeal, clrYellow))
+      return;
+
    ChartRedraw();
   }
 
@@ -513,6 +558,9 @@ bool ButtonCreate(const long chart_ID = 0, const string name = "Button", const i
 void DeleteButtons()
   {
    ButtonDelete(0, "SellOne_btn");
+   ButtonDelete(0, "SellLimit_btn");
+   ButtonDelete(0, "BuyOne_btn");
+   ButtonDelete(0, "BuyLimit_btn");
   }
 
 //+------------------------------------------------------------------+
