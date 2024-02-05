@@ -11,7 +11,7 @@ class VolumeCalculator:
 
     def buy_volume(self, buy_amount: Decimal, buy_price: Decimal, already_invested: Decimal) -> Decimal:
         if already_invested > self.max_cash_to_invest:
-            self.write_log_f(f"BUY skipped: Invested too much, own: {already_invested}/{self.max_cash_to_invest}")
+            # self.write_log_f(f"BUY skipped: Invested too much, own: {already_invested}/{self.max_cash_to_invest}")
             return Decimal(0)
 
         if already_invested < Decimal("0.2") * self.max_cash_to_invest:

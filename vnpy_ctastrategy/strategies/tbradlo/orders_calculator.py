@@ -23,6 +23,9 @@ class OrdersCalculator:
 
         cash_invested = sum([execution.price * execution.volume for execution in executions])
         own_volume = sum([execution.volume for execution in executions])
+        if own_volume <= 0:
+            return []
+
         avg_price = cash_invested / own_volume
 
         cash_invested_to_reduce_all = self.REDUCE_ALL_THRESHOLD * self.max_cash_to_invest
@@ -34,8 +37,9 @@ class OrdersCalculator:
             return [(sell_price, sell_volume)]
 
         cash_invested_to_reduce_worst = self.REDUCE_WORST_THRESHOLD * self.max_cash_to_invest
+        last_buy = executions[-1].volume > 0
 
-        if cash_invested > cash_invested_to_reduce_worst:
+        if last_buy and cash_invested > cash_invested_to_reduce_worst:
             cash_to_sell = cash_invested - cash_invested_to_reduce_worst
             worst_execution = None
             for execution in executions:
