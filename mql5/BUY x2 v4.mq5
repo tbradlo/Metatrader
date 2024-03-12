@@ -53,14 +53,14 @@ double accumulateFromPrice = 0.;
 bool inactive = false;
 
 
-extern int Corner = 2;
-extern int Move_X = 0;
-extern int Move_Y = 0;
-extern string B00001 = "============================";
-extern int Button_Width = 30;
-extern string Font_Type = "Arial Bold";
-extern color Font_Color = clrWhite;
-extern int Font_Size = 8;
+int Corner = 2;
+int Move_X = 0;
+int Move_Y = 0;
+string B00001 = "============================";
+int Button_Width = 30;
+string Font_Type = "Arial Bold";
+color Font_Color = clrWhite;
+int Font_Size = 8;
 
 //+------------------------------------------------------------------+
 //|                                                                  |
