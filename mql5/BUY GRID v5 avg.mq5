@@ -35,6 +35,7 @@ input double nextBuyPositionByPoints = 50;
 input int maxBuffer = 0; // keep X positions sell buffer to have sth to sell in case of rapid grow
 input double takeProfitPoints = 75;
 input int maxBuyPositions = 10;
+input double maxBuyPrice = 100.0;
 
 
 // SELL
@@ -236,11 +237,12 @@ void calculate()
 //+------------------------------------------------------------------+
 void openBuyOrdersLogic()
   {
-   if (totalBuyPositions >= maxBuyPositions){
+   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+   if (totalBuyPositions >= maxBuyPositions || askPrice > maxBuyPrice){
       return;
    }
 
-   double askPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 // Place initial Orders
    if(totalBuyPositions == 0)
      {
