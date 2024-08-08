@@ -188,7 +188,7 @@
         "setting": {
             "buy_amount": 500.0,
             "buy_step": 1.07,
-            "take_profit": 1.17,
+            "take_profit": 1.20,
             "buy_orders_count": 2,
             "sell_orders_count": 2,
             "max_cash_invested": 7500.0,
@@ -262,7 +262,7 @@
             "buy_orders_count": 2,
             "sell_orders_count": 2,
             "max_cash_invested": 7500.0,
-            "max_buy_price": 130.0,
+            "max_buy_price": 120.0,
             "buy_steps_algo": "percent"
         }
     },

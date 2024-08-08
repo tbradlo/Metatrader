@@ -103,7 +103,7 @@
     },
     "NEM USD": {
         "pos": 243,
-        "last_buy_price": 39.21,
+        "last_buy_price": 46.61,
         "executions": [
             {
                 "date": "2023-06-16T08:18:47Z",
@@ -319,13 +319,28 @@
                 "date": "2024-07-11T14:32:19Z",
                 "price": "46.24",
                 "volume": "-14"
+            },
+            {
+                "date": "2024-07-11T14:32:19Z",
+                "price": "46.24",
+                "volume": "-14"
+            },
+            {
+                "date": "2024-07-29T13:41:00Z",
+                "price": "46.85",
+                "volume": "-121"
+            },
+            {
+                "date": "2024-07-31T14:48:00Z",
+                "price": "49.02",
+                "volume": "-13"
             }
         ],
         "profit": 2573.475
     },
     "GOLD USD": {
         "pos": 494,
-        "last_buy_price": 16.36,
+        "last_buy_price": 17.34,
         "executions": [
             {
                 "date": "2023-06-16T08:14:33Z",
@@ -521,13 +536,18 @@
                 "date": "2024-07-12T20:00:18Z",
                 "price": "18.52",
                 "volume": "-33"
+            },
+            {
+                "date": "2024-07-29T13:40:00Z",
+                "price": "17.815",
+                "volume": "-247"
             }
         ],
         "profit": 2402.43
     },
     "NOD NOK": {
         "pos": 209,
-        "last_buy_price": 130.8,
+        "last_buy_price": 121.1,
         "executions": [
             {
                 "date": "2023-06-13T07:16:18Z",
@@ -678,13 +698,18 @@
                 "date": "2024-07-26T15:31:13Z",
                 "price": "130.8",
                 "volume": "39"
+            },
+            {
+                "date": "2024-08-05T03:05:00Z",
+                "price": "121.1",
+                "volume": "42"
             }
         ],
         "profit": 13600.53
     },
     "PBB_EUR": {
         "pos": 701,
-        "last_buy_price": 5.755,
+        "last_buy_price": 4.758,
         "executions": [
             {
                 "date": "2023-06-06T03:05:58Z",
@@ -870,6 +895,11 @@
                 "date": "2024-05-14T11:29:04Z",
                 "price": "5.495",
                 "volume": "-686"
+            },
+            {
+                "date": "2024-08-05T03:02:00Z",
+                "price": "4.7580",
+                "volume": "106"
             }
         ],
         "profit": 142.331
@@ -1048,7 +1078,7 @@
     },
     "RIO USD": {
         "pos": 34,
-        "last_buy_price": 65.17,
+        "last_buy_price": 62.5,
         "executions": [
             {
                 "date": "2023-06-02T12:21:02Z",
@@ -1144,13 +1174,18 @@
                 "date": "2024-06-17T10:49:07Z",
                 "price": "65.17",
                 "volume": "8"
+            },
+            {
+                "date": "2024-08-05T04:00:00Z",
+                "price": "62.50",
+                "volume": "8"
             }
         ],
         "profit": 753.65
     },
     "VALE USD": {
         "pos": 457,
-        "last_buy_price": 11.25,
+        "last_buy_price": 10.63,
         "executions": [
             {
                 "date": "2023-06-02T12:22:06Z",
@@ -1241,6 +1276,11 @@
                 "date": "2024-06-10T15:30:02Z",
                 "price": "11.25",
                 "volume": "45"
+            },
+            {
+                "date": "2024-08-01T12:24:00Z",
+                "price": "10.63",
+                "volume": "48"
             }
         ],
         "profit": -352.265
@@ -1444,7 +1484,7 @@
     },
     "BAS EUR": {
         "pos": 75,
-        "last_buy_price": 43.82,
+        "last_buy_price": 40.95,
         "executions": [
             {
                 "date": "2023-06-20T06:10:53Z",
@@ -1520,13 +1560,18 @@
                 "date": "2024-07-10T09:04:04Z",
                 "price": "43.82",
                 "volume": "12"
+            },
+            {
+                "date": "2024-08-05T03:03:00Z",
+                "price": "40.95",
+                "volume": "13"
             }
         ],
         "profit": 623.665
     },
     "INTC USD": {
         "pos": 104,
-        "last_buy_price": 31.38,
+        "last_buy_price": 25.98,
         "executions": [
             {
                 "date": "2023-06-20T12:34:08Z",
@@ -1727,13 +1772,23 @@
                 "date": "2024-07-25T10:07:17Z",
                 "price": "31.38",
                 "volume": "16"
+            },
+            {
+                "date": "2024-08-01T13:00:00Z",
+                "price": "29.33",
+                "volume": "18"
+            },
+            {
+                "date": "2024-08-01T16:01:00Z",
+                "price": "27.41",
+                "volume": "19"
             }
         ],
         "profit": 1301.99
     },
     "LXS EUR": {
         "pos": 246,
-        "last_buy_price": 23.84,
+        "last_buy_price": 22.28,
         "executions": [
             {
                 "date": "2023-06-21T03:39:16Z",
@@ -1919,13 +1974,18 @@
                 "date": "2024-07-17T14:14:10Z",
                 "price": "26.26",
                 "volume": "-34"
+            },
+            {
+                "date": "2024-08-05T03:11:00Z",
+                "price": "22.28",
+                "volume": "23"
             }
         ],
         "profit": 1424.28
     },
     "EUR JPY": {
         "pos": 47862,
-        "last_buy_price": 162.93,
+        "last_buy_price": 158.119,
         "executions": [
             {
                 "date": "2023-08-10T09:41:02Z",
@@ -1946,6 +2006,11 @@
                 "date": "2024-07-03T09:01:21Z",
                 "price": "173.935",
                 "volume": "-1265"
+            },
+            {
+                "date": "2024-08-04T21:13:00Z",
+                "price": "158.1190",
+                "volume": "1265"
             }
         ],
         "profit": 0.0
@@ -2031,7 +2096,7 @@
     },
     "VOW3 EUR": {
         "pos": 45,
-        "last_buy_price": 107.1,
+        "last_buy_price": 105.60,
         "executions": [
             {
                 "date": "2023-07-19T16:07:50Z",
@@ -2092,6 +2157,11 @@
                 "date": "2024-02-23T10:25:49Z",
                 "price": "123.58",
                 "volume": "-5"
+            },
+            {
+                "date": "2024-08-05T08:24:00Z",
+                "price": "92.24",
+                "volume": "6"
             }
         ],
         "profit": -181.08
@@ -2219,7 +2289,7 @@
     },
     "PAH3 EUR": {
         "pos": 116,
-        "last_buy_price": 40.95,
+        "last_buy_price": 38.28,
         "executions": [
             {
                 "date": "2023-07-26T12:24:51Z",
@@ -2275,6 +2345,11 @@
                 "date": "2024-07-25T09:00:25Z",
                 "price": "40.95",
                 "volume": "13"
+            },
+            {
+                "date": "2024-08-05T03:11:00Z",
+                "price": "38.28",
+                "volume": "14"
             }
         ],
         "profit": -630.71
@@ -2357,8 +2432,8 @@
         "profit": 790.87
     },
     "BMW EUR": {
-        "pos": 30,
-        "last_buy_price": 93.42,
+        "pos": 36,
+        "last_buy_price": 80.56,
         "executions": [
             {
                 "date": "2023-08-02T12:26:24Z",
@@ -2404,13 +2479,23 @@
                 "date": "2024-05-22T09:02:03Z",
                 "price": "93.42",
                 "volume": "4"
+            },
+            {
+                "date": "2024-07-30T13:43:32Z",
+                "price": "86.2",
+                "volume": "6"
+            },
+            {
+                "date": "2024-08-05T03:08:00Z",
+                "price": "79.82",
+                "volume": "7"
             }
         ],
-        "profit": 66.1
+        "profit": -130.1
     },
     "TSLA USD": {
         "pos": 11,
-        "last_buy_price": 220.7,
+        "last_buy_price": 199.45,
         "executions": [
             {
                 "date": "2023-08-07T12:42:47Z",
@@ -2596,13 +2681,23 @@
                 "date": "2024-07-24T15:42:55Z",
                 "price": "220.7",
                 "volume": "2"
+            },
+            {
+                "date": "2024-08-02T08:36:00Z",
+                "price": "210.19",
+                "volume": "2"
+            },
+            {
+                "date": "2024-08-05T04:00:00Z",
+                "price": "199.45",
+                "volume": "2"
             }
         ],
         "profit": 1278.87
     },
     "IFX EUR": {
         "pos": 86,
-        "last_buy_price": 30.745,
+        "last_buy_price": 29.2,
         "executions": [
             {
                 "date": "2023-08-09T11:41:06Z",
@@ -2688,13 +2783,18 @@
                 "date": "2024-07-25T09:02:57Z",
                 "price": "30.745",
                 "volume": "17"
+            },
+            {
+                "date": "2024-08-02T09:33:00Z",
+                "price": "29.20",
+                "volume": "18"
             }
         ],
         "profit": 568.87
     },
     "EC USD": {
         "pos": 388,
-        "last_buy_price": 10.63,
+        "last_buy_price": 9.93,
         "executions": [
             {
                 "date": "2023-08-30T13:38:46Z",
@@ -2755,6 +2855,11 @@
                 "date": "2024-07-23T15:54:43Z",
                 "price": "10.63",
                 "volume": "48"
+            },
+            {
+                "date": "2024-08-05T04:01:00Z",
+                "price": "9.93",
+                "volume": "51"
             }
         ],
         "profit": -126.985
@@ -2920,7 +3025,7 @@
     },
     "Panasonic JPY": {
         "pos": 200,
-        "last_buy_price": 1285.0,
+        "last_buy_price": 1058.0,
         "executions": [
             {
                 "date": "2023-12-26T02:43:01Z",
@@ -2930,6 +3035,16 @@
             {
                 "date": "2024-06-14T02:00:01Z",
                 "price": "1285.0",
+                "volume": "100"
+            },
+            {
+                "date": "2024-07-31T20:06:00Z",
+                "price": "1170.0",
+                "volume": "100"
+            },
+            {
+                "date": "2024-08-04T20:06Z",
+                "price": "1058",
                 "volume": "100"
             }
         ],
