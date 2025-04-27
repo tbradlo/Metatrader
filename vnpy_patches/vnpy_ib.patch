@@ -5,7 +5,7 @@ Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 ===================================================================
 diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 --- a/vnpy_ib/ib_gateway.py	(revision 7a0f594377743b3a2a8b82d4054c2dceecc5cace)
-+++ b/vnpy_ib/ib_gateway.py	(date 1695893104656)
++++ b/vnpy_ib/ib_gateway.py	(date 1745757670036)
 @@ -15,14 +15,16 @@
  from copy import copy
  from datetime import datetime, timedelta
@@ -59,7 +59,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  EXCHANGE_VT2IB: Dict[Exchange, str] = {
      Exchange.SMART: "SMART",
      Exchange.NYMEX: "NYMEX",
-@@ -109,11 +111,21 @@
+@@ -109,11 +111,22 @@
      Exchange.IEX: "IEX",
      Exchange.IBKRATS: "IBKRATS",
      Exchange.OTC: "PINK",
@@ -74,7 +74,8 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 +    Exchange.LSE: "LSE",
 +    Exchange.EUREX: "EUREX",
 +    Exchange.TSEJ: "TSEJ",
-+    Exchange.SBF: "SBF"
++    Exchange.SBF: "SBF",
++    Exchange.WSE: "WSE"
  }
  EXCHANGE_IB2VT: Dict[str, Exchange] = {v: k for k, v in EXCHANGE_VT2IB.items()}
 
@@ -83,7 +84,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  PRODUCT_IB2VT: Dict[str, Product] = {
      "STK": Product.EQUITY,
      "CASH": Product.FOREX,
-@@ -122,10 +134,11 @@
+@@ -122,10 +135,11 @@
      "OPT": Product.OPTION,
      "FOP": Product.OPTION,
      "CONTFUT": Product.FUTURES,
@@ -97,7 +98,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  OPTION_IB2VT: Dict[str, OptionType] = {
      "C": OptionType.CALL,
      "CALL": OptionType.CALL,
-@@ -133,7 +146,7 @@
+@@ -133,7 +147,7 @@
      "PUT": OptionType.PUT
  }
 
@@ -106,7 +107,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  CURRENCY_VT2IB: Dict[Currency, str] = {
      Currency.USD: "USD",
      Currency.CAD: "CAD",
-@@ -141,7 +154,7 @@
+@@ -141,7 +155,7 @@
      Currency.HKD: "HKD",
  }
 
@@ -115,7 +116,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  TICKFIELD_IB2VT: Dict[int, str] = {
      0: "bid_volume_1",
      1: "bid_price_1",
-@@ -160,7 +173,7 @@
+@@ -160,7 +174,7 @@
      14: "open_price",
  }
 
@@ -124,7 +125,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
  ACCOUNTFIELD_IB2VT: Dict[str, str] = {
      "NetLiquidationByCurrency": "balance",
      "NetLiquidation": "balance",
-@@ -169,48 +182,48 @@
+@@ -169,48 +183,48 @@
      "MaintMarginReq": "margin",
  }
 
@@ -186,7 +187,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          query_options: bool = setting["查询期权"] == "是"
 
          self.api.connect(host, port, clientid, account, query_options)
-@@ -222,7 +235,7 @@
+@@ -222,7 +236,7 @@
          self.api.close()
 
      def subscribe(self, req: SubscribeRequest) -> None:
@@ -195,7 +196,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          self.api.subscribe(req)
 
      def send_order(self, req: OrderRequest) -> str:
-@@ -234,7 +247,7 @@
+@@ -234,7 +248,7 @@
          self.api.cancel_order(req)
 
      def query_account(self) -> None:
@@ -204,7 +205,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          pass
 
      def query_position(self) -> None:
-@@ -246,7 +259,7 @@
+@@ -246,7 +260,7 @@
          return self.api.query_history(req)
 
      def process_timer_event(self, event: Event) -> None:
@@ -213,7 +214,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          self.count += 1
          if self.count < 10:
              return
-@@ -256,11 +269,13 @@
+@@ -256,11 +270,13 @@
 
 
  class IbApi(EWrapper):
@@ -228,7 +229,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
      def __init__(self, gateway: IbGateway) -> None:
          """构造函数"""
          super().__init__()
-@@ -288,6 +303,7 @@
+@@ -288,6 +304,7 @@
 
          self.history_req: HistoryRequest = None
          self.history_condition: Condition = Condition()
@@ -236,7 +237,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          self.history_buf: List[BarData] = []
 
          self.reqid_symbol_map: dict[int, str] = {}
-@@ -297,7 +313,7 @@
+@@ -297,7 +314,7 @@
      def connectAck(self) -> None:
          """连接成功回报"""
          self.status = True
@@ -245,7 +246,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 
          self.load_contract_data()
 
-@@ -306,7 +322,7 @@
+@@ -306,7 +323,7 @@
      def connectionClosed(self) -> None:
          """连接断开回报"""
          self.status = False
@@ -254,7 +255,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 
      def nextValidId(self, orderId: int) -> None:
          """下一个有效订单号回报"""
-@@ -322,7 +338,7 @@
+@@ -322,7 +339,7 @@
          dt: datetime = datetime.fromtimestamp(time)
          time_string: str = dt.strftime("%Y-%m-%d %H:%M:%S.%f")
 
@@ -263,7 +264,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          self.gateway.write_log(msg)
 
      def error(
-@@ -332,19 +348,19 @@
+@@ -332,19 +349,19 @@
          errorString: str,
          advancedOrderRejectJson: str = ""
      ) -> None:
@@ -287,7 +288,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          if errorCode == 2104 and not self.data_ready:
              self.data_ready = True
 
-@@ -356,7 +372,7 @@
+@@ -356,7 +373,7 @@
                  self.subscribe(req)
 
      def tickPrice(self, reqId: TickerId, tickType: TickType, price: float, attrib: TickAttrib) -> None:
@@ -296,7 +297,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          super().tickPrice(reqId, tickType, price, attrib)
 
          if tickType not in TICKFIELD_IB2VT:
-@@ -366,12 +382,12 @@
+@@ -366,12 +383,12 @@
          name: str = TICKFIELD_IB2VT[tickType]
          setattr(tick, name, price)
 
@@ -311,14 +312,8 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          exchange: Exchange = self.tick_exchange[reqId]
          if exchange is Exchange.IDEALPRO or "CMDTY" in tick.symbol:
              if not tick.bid_price_1 or not tick.ask_price_1:
-@@ -380,9 +396,13 @@
-             tick.datetime = datetime.now(LOCAL_TZ)
-
+@@ -382,7 +399,7 @@
          self.gateway.on_tick(copy(tick))
-+        # if tick.vt_symbol == "USD-PLN-CFD.SMART":
-+        #     tick = copy(tick)
-+        #     tick.vt_symbol = "USD-PLN-CFD.SMART"
-+        #     self.gateway.on_tick(copy(tick))
 
      def tickSize(self, reqId: TickerId, tickType: TickType, size: Decimal) -> None:
 -        """tick数量更新回报"""
@@ -326,18 +321,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          super().tickSize(reqId, tickType, size)
 
          if tickType not in TICKFIELD_IB2VT:
-@@ -393,6 +413,10 @@
-         setattr(tick, name, float(size))
-
-         self.gateway.on_tick(copy(tick))
-+        # if tick.vt_symbol == "USD-PLN-CFD.SMART":
-+        #     tick = copy(tick)
-+        #     tick.vt_symbol = "USD-PLN-CFD.SMART"
-+        #     self.gateway.on_tick(copy(tick))
-
-     def tickString(self, reqId: TickerId, tickType: TickType, value: str) -> None:
-         """tick字符串更新回报"""
-@@ -470,7 +494,7 @@
+@@ -470,7 +487,7 @@
          whyHeld: str,
          mktCapPrice: float,
      ) -> None:
@@ -346,7 +330,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          super().orderStatus(
              orderId,
              status,
-@@ -506,7 +530,7 @@
+@@ -506,7 +523,7 @@
          ib_order: Order,
          orderState: OrderState,
      ) -> None:
@@ -355,7 +339,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          super().openOrder(orderId, ib_contract, ib_order, orderState)
 
          orderid: str = str(orderId)
-@@ -585,7 +609,7 @@
+@@ -585,7 +602,7 @@
              exchange: Exchange = Exchange.SMART   # Use smart routing for default
 
          if not exchange:
@@ -364,7 +348,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
              self.gateway.write_log(msg)
              return
 
-@@ -613,7 +637,7 @@
+@@ -613,7 +630,7 @@
              self.gateway.on_account(copy(account))
 
      def contractDetails(self, reqId: int, contractDetails: ContractDetails) -> None:
@@ -373,7 +357,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          super().contractDetails(reqId, contractDetails)
 
          # 提取合约信息
-@@ -630,6 +654,22 @@
+@@ -630,6 +647,14 @@
          else:
              symbol: str = str(ib_contract.conId)
 
@@ -385,18 +369,10 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 +        except Exception as e:
 +            print(f"Exception getting Market Rule Id: {e}")
 +
-+        exchanges = contractDetails.validExchanges.split(",")
-+        exchange_idx = exchanges.index(ib_contract.exchange)
-+        market_rule_id = None
-+        try:
-+            market_rule_id = int(contractDetails.marketRuleIds.split(",")[exchange_idx])
-+        except Exception as e:
-+            print(f"Exception getting Market Rule Id: {e}")
-+
          # 生成合约
          contract: ContractData = ContractData(
              symbol=symbol,
-@@ -643,6 +683,7 @@
+@@ -643,6 +668,7 @@
              history_data=True,
              stop_supported=True,
              gateway_name=self.gateway_name,
@@ -404,7 +380,16 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          )
 
          if contract.product == Product.OPTION:
-@@ -665,10 +706,12 @@
+@@ -655,7 +681,7 @@
+             contract.option_expiry = datetime.strptime(ib_contract.lastTradeDateOrContractMonth, "%Y%m%d")
+             contract.option_underlying = underlying_symbol + "_" + ib_contract.lastTradeDateOrContractMonth
+
+-        if contract.vt_symbol not in self.contracts:
++        if contract.vt_symbol not in self.contracts or contract.marketRuleId != self.contracts.get(contract.vt_symbol).marketRuleId:
+             self.gateway.on_contract(contract)
+
+             self.contracts[contract.vt_symbol] = contract
+@@ -665,10 +691,12 @@
              self.query_option_portfolio(ib_contract)
 
      def execDetails(self, reqId: int, contract: Contract, execution: Execution) -> None:
@@ -419,7 +404,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
              timezone = execution.time.split(" ")[-1]
              time_str = execution.time.replace(f" {timezone}", "")
              tz = ZoneInfo(timezone)
-@@ -704,13 +747,13 @@
+@@ -704,13 +732,13 @@
                  if account_code:
                      self.account = account_code
 
@@ -436,7 +421,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
              timezone = ib_bar.date.split(" ")[-1]
              time_str = ib_bar.date.replace(f" {timezone}", "")
              tz = ZoneInfo(timezone)
-@@ -816,36 +859,38 @@
+@@ -816,36 +844,38 @@
          self.client.reqContractDetails(self.reqid, ib_contract)
 
      def subscribe(self, req: SubscribeRequest) -> None:
@@ -482,7 +467,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
 
          tick: TickData = TickData(
              symbol=req.symbol,
-@@ -864,11 +909,11 @@
+@@ -864,11 +894,11 @@
              return ""
 
          if req.exchange not in EXCHANGE_VT2IB:
@@ -496,7 +481,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
              return ""
 
          self.orderid += 1
-@@ -891,6 +936,8 @@
+@@ -891,6 +921,8 @@
          elif req.type == OrderType.STOP:
              ib_order.auxPrice = req.price
 
@@ -505,7 +490,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          self.client.placeOrder(self.orderid, ib_contract, ib_order)
          self.client.reqIds(1)
 
-@@ -906,10 +953,10 @@
+@@ -906,10 +938,10 @@
          self.client.cancelOrder(int(req.orderid), "")
 
      def query_history(self, req: HistoryRequest) -> List[BarData]:
@@ -518,7 +503,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
              return []
 
          self.history_req = req
-@@ -926,7 +973,7 @@
+@@ -926,7 +958,7 @@
          end_str: str = end.strftime("%Y%m%d %H:%M:%S") + " " + get_localzone_name()
 
          delta: timedelta = end - req.start
@@ -527,7 +512,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          duration: str = f"{days} D"
          bar_size: str = INTERVAL_VT2IB[req.interval]
 
-@@ -960,7 +1007,7 @@
+@@ -960,7 +992,7 @@
          return history
 
      def load_contract_data(self) -> None:
@@ -536,7 +521,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          f = shelve.open(self.data_filepath)
          self.contracts = f.get("contracts", {})
          f.close()
-@@ -968,10 +1015,10 @@
+@@ -968,10 +1000,10 @@
          for contract in self.contracts.values():
              self.gateway.on_contract(contract)
 
@@ -549,7 +534,7 @@ diff --git a/vnpy_ib/ib_gateway.py b/vnpy_ib/ib_gateway.py
          f = shelve.open(self.data_filepath)
          f["contracts"] = self.contracts
          f.close()
-@@ -994,15 +1041,36 @@
+@@ -994,15 +1026,36 @@
 
          symbol: str = JOIN_SYMBOL.join(fields)
 
