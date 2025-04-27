@@ -183,7 +183,7 @@ class GridBuyStrategy(CtaTemplate):
         self.started = True
 
         try:
-            last_tick = self.cta_engine.main_engine.engines['oms'].ticks[tick_symbol]
+            last_tick = self.cta_engine.main_engine.engines['oms'].ticks[self.vt_symbol]
             self.on_tick(last_tick)
         except KeyError:
             self.write_log("Reading last tick failed")
