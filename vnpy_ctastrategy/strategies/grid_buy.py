@@ -18,7 +18,7 @@ from vnpy_ctastrategy import (
     OrderData,
 )
 from vnpy_ctastrategy.base import EngineType
-from vnpy_ctastrategy.strategies.execution_tuple import ExecutionTuple
+from vnpy_ctastrategy.strategies.execution_tuple import ExecutionTuple, calculate_profit
 from vnpy_ctastrategy.strategies.tbradlo.base_prices_calculator import BasePricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.buy_percentage_prices_calculator import PercentagePricesCalculator
 from vnpy_ctastrategy.strategies.tbradlo.orders_calculator import OrdersCalculator
@@ -41,12 +41,12 @@ class GridBuyStrategy(CtaTemplate):
     author = "Tomek"
 
     buy_amount: float = 500.  # params must be static
-    buy_step: float = 1.01
-    take_profit: float = 1.15
+    buy_step: float = 1.1
+    take_profit: float = 1.2
     buy_orders_count: int = 2
     sell_orders_count: int = 2
-    max_cash_invested: float = 10000.
-    max_buy_price: float = 9999.
+    max_cash_invested: float = 5000.
+    max_buy_price: float = 500.
     buy_steps_algo: str = "percent"
     executions: [ExecutionTuple] = []
     profit: float = 0.
@@ -175,10 +175,15 @@ class GridBuyStrategy(CtaTemplate):
 
         self.write_log(f"strategy start, Own vol: {self.pos} Sells: {len(self.active_sell_orders)} Buys: {len(self.active_buy_orders)}")
         self.write_log(f"strategy orders in dict: : {len({key: value for key, value in self.cta_engine.orderid_strategy_map.items() if value == self})}")
+
+        if self.pos > 0 and self.last_buy_price > 0:
+            last_buy_price_d = Decimal(str(self.last_buy_price))
+            self.calculate(last_buy_price_d, last_buy_price_d)
+
         self.started = True
 
         try:
-            last_tick = self.cta_engine.main_engine.engines['oms'].ticks[self.vt_symbol]
+            last_tick = self.cta_engine.main_engine.engines['oms'].ticks[tick_symbol]
             self.on_tick(last_tick)
         except KeyError:
             self.write_log("Reading last tick failed")
@@ -200,20 +205,12 @@ class GridBuyStrategy(CtaTemplate):
         if self.trading:
             self.calculate(bid_price, ask_price)
 
-        if '-STK' in self.vt_symbol:
+        if '-STK' in self.vt_symbol and tick.datetime.timestamp() % 10 == 0:
             self.update_profit()
 
     def update_profit(self):
-        paid = Decimal('0')
-        received = Decimal('0')
-        for execution in self.executions:
-            if execution.volume < 0:
-                received += execution.price * execution.volume
-            elif execution.volume > 0:
-                paid += execution.price * execution.volume
-        self.profit = float(received - paid + self.current_value)
+        self.profit = calculate_profit(self.executions, self.current_value)
         self.put_event()
-
 
     @staticmethod
     def to_decimal(float_value) -> Decimal:
@@ -263,7 +260,7 @@ class GridBuyStrategy(CtaTemplate):
 
         if buy_volume > 0:
             order_ids = self.buy(float(buy_price), float(buy_volume))
-            self.write_log(f"BUY: {buy_volume} x {buy_price}")
+            self.write_log(f"BUY: {buy_volume} x {buy_price}, orderIds: {order_ids}")
             if order_ids:
                 self.active_buy_orders[order_ids[0]] = Order(buy_price, buy_volume)
 
@@ -283,7 +280,8 @@ class GridBuyStrategy(CtaTemplate):
             volume_for_sell -= sell_volume
 
         for sell_price in missing_sell_orders:
-            sell_volume = self.volume_calculator.sell_volume(volume_for_sell, self.buy_amount_d(), sell_price)
+            sell_amount = self.buy_amount_d() * self.take_profit_d() # TODO sell what you bought ONLY until cash utilised > 50%
+            sell_volume = self.volume_calculator.sell_volume(volume_for_sell, sell_amount, sell_price)
             if sell_volume > 0:
                 order_ids = self.sell(float(sell_price), float(sell_volume))
                 self.write_log(f"SELL: {sell_volume} x {sell_price}")
@@ -320,19 +318,19 @@ class GridBuyStrategy(CtaTemplate):
         old_price = self.last_buy_price_d()
         trade_volume = 0
         if trade.direction == Direction.LONG:
-            trade_volume = trade.volume
+            trade_volume = Decimal(trade.volume)
             if trade.vt_orderid in self.active_buy_orders:
                 order = self.active_buy_orders[trade.vt_orderid]
-                order.volume -= trade.volume
+                order.volume -= Decimal(trade.volume)
                 if order.volume <= 0:
                     self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
                     del self.active_buy_orders[trade.vt_orderid]
 
         elif trade.direction == Direction.SHORT:
-            trade_volume = -1 * trade.volume
+            trade_volume = -1 * Decimal(trade.volume)
             if trade.vt_orderid in self.active_sell_orders:
                 order = self.active_sell_orders[trade.vt_orderid]
-                order.volume -= trade.volume
+                order.volume -= Decimal(trade.volume)
                 if order.volume <= 0:
                     self.last_buy_price = float(self.prices_calculator.higher_buy_price(self.last_buy_price_d()))
                     del self.active_sell_orders[trade.vt_orderid]

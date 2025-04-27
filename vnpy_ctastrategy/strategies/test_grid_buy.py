@@ -116,7 +116,7 @@ class TestGridBuy(TestCase):
             test_engine.run_backtesting()
 
             #then
-            self.assertEqual(200, test_engine.strategy.pos)
+            self.assertEqual(154.0, test_engine.strategy.pos)
             self.assertEqual(12.9, test_engine.strategy.last_buy_price) # TODO is that right?
 
     def test_when_last_buy_present_should_send_valid_orders(self):
@@ -196,10 +196,10 @@ class TestGridBuy(TestCase):
             # then
             self.assertEqual(12., test_engine.strategy.last_buy_price)
             self.assertEqual({
-                11.86: [Direction.LONG, 220],
-                11.94: [Direction.LONG, 218],
-                13.22: [Direction.SHORT, 152],
-                13.31: [Direction.SHORT, 48]}, got_active_orders)
+                11.86: [Direction.LONG, 169],
+                11.94: [Direction.LONG, 168],
+                13.22: [Direction.SHORT, 167],
+                13.31: [Direction.SHORT, 33]}, got_active_orders)
 
 
 def a_tick(time, price):
