@@ -46,7 +46,7 @@ class GridBuyStrategy(CtaTemplate):
     buy_orders_count: int = 2
     sell_orders_count: int = 2
     max_cash_invested: float = 5000.
-    max_buy_price: float = 500.
+    max_buy_price: float = 100.
     buy_steps_algo: str = "percent"
     executions: [ExecutionTuple] = []
     profit: float = 0.
@@ -178,10 +178,7 @@ class GridBuyStrategy(CtaTemplate):
 
         self.started = True
         self.trading = True
-
-        if self.pos > 0 and self.last_buy_price > 0:
-            last_buy_price_d = Decimal(str(self.last_buy_price))
-            self.calculate(last_buy_price_d, last_buy_price_d)
+        self.calculate()
 
         try:
             last_tick = self.cta_engine.main_engine.engines['oms'].ticks[self.vt_symbol]
@@ -204,7 +201,7 @@ class GridBuyStrategy(CtaTemplate):
         self.current_value = Decimal(str(bid_price * self.pos))
         self.bg.update_tick(tick) # TODO needed?
         if self.trading:
-            self.calculate(bid_price, ask_price)
+            self.calculate()
 
         if '-STK' in self.vt_symbol and tick.datetime.timestamp() % 10 == 0:
             self.update_profit()
@@ -217,10 +214,10 @@ class GridBuyStrategy(CtaTemplate):
     def to_decimal(float_value) -> Decimal:
         return Decimal(str(float_value))
 
-    def calculate(self, bid_price: Decimal, ask_price: Decimal):
+    def calculate(self):
         if self.pos == 0:
             if len(self.active_buy_orders) == 0:
-                self.send_buy(ask_price)  # Buy using "Market Price"
+                self.send_buy(self.to_decimal(self.max_buy_price))  # Buy using "Max Price" in case of no Market Data subscriptions (effectively Market Price)
             return
 
         expected_buy_orders = self.prices_calculator.next_buys(self.last_buy_price_d(), self.buy_orders_count)
@@ -245,7 +242,7 @@ class GridBuyStrategy(CtaTemplate):
             return
         # self.write_log("on bar1")  # bar.datetime.timestamp() > datetime.strptime("2022-01-20","%Y-%m-%d").timestamp()
         self.current_value = Decimal(str(bar.close_price * self.pos))
-        self.calculate(self.to_decimal(bar.low_price), self.to_decimal(bar.high_price))
+        self.calculate()
 
     def send_buy(self, buy_price: Decimal):
         if buy_price > self.max_buy_price:
@@ -347,7 +344,7 @@ class GridBuyStrategy(CtaTemplate):
 
         self.write_log(f"OnTrade updated lastBuyPrice: {old_price} -> {self.last_buy_price_d()}")
 
-        self.calculate(trade_price, trade_price)
+        self.calculate()
 
         self.put_event()
 
