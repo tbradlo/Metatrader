@@ -176,11 +176,12 @@ class GridBuyStrategy(CtaTemplate):
         self.write_log(f"strategy start, Own vol: {self.pos} Sells: {len(self.active_sell_orders)} Buys: {len(self.active_buy_orders)}")
         self.write_log(f"strategy orders in dict: : {len({key: value for key, value in self.cta_engine.orderid_strategy_map.items() if value == self})}")
 
+        self.started = True
+        self.trading = True
+
         if self.pos > 0 and self.last_buy_price > 0:
             last_buy_price_d = Decimal(str(self.last_buy_price))
             self.calculate(last_buy_price_d, last_buy_price_d)
-
-        self.started = True
 
         try:
             last_tick = self.cta_engine.main_engine.engines['oms'].ticks[self.vt_symbol]
@@ -316,6 +317,7 @@ class GridBuyStrategy(CtaTemplate):
     def on_trade(self, trade: TradeData):
         self.write_log(f"OnTrade called lastBuyPrice: {trade.vt_symbol} {trade.direction}")
         old_price = self.last_buy_price_d()
+        trade_price = self.to_decimal(trade.price)
         trade_volume = 0
         if trade.direction == Direction.LONG:
             trade_volume = Decimal(trade.volume)
@@ -323,7 +325,7 @@ class GridBuyStrategy(CtaTemplate):
                 order = self.active_buy_orders[trade.vt_orderid]
                 order.volume -= Decimal(trade.volume)
                 if order.volume <= 0:
-                    self.last_buy_price = float(self.prices_calculator.normalize(self.to_decimal(trade.price)))
+                    self.last_buy_price = float(self.prices_calculator.normalize(trade_price))
                     del self.active_buy_orders[trade.vt_orderid]
 
         elif trade.direction == Direction.SHORT:
@@ -344,6 +346,8 @@ class GridBuyStrategy(CtaTemplate):
                 ExecutionTuple(trade.datetime.strftime("%Y-%m-%dT%H:%M:%SZ"), Decimal(str(trade.price)), Decimal(str(trade_volume))))
 
         self.write_log(f"OnTrade updated lastBuyPrice: {old_price} -> {self.last_buy_price_d()}")
+
+        self.calculate(trade_price, trade_price)
 
         self.put_event()
 
