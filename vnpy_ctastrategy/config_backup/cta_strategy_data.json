@@ -19,7 +19,7 @@
         ],
         "last_buy_price": 1996.0,
         "pos": 300,
-        "profit": -4650.0
+        "profit": 21300.0
     },
     "6752 Panasonic JPY": {
         "executions": [
@@ -31,7 +31,7 @@
         ],
         "last_buy_price": 1488.5,
         "pos": 100,
-        "profit": 2300.0
+        "profit": 12700.0
     },
     "6902 Denso JPY": {
         "executions": [
@@ -43,7 +43,7 @@
         ],
         "last_buy_price": 1710.5,
         "pos": 100,
-        "profit": 2700.0
+        "profit": 12700.0
     },
     "6954 Fanuc JPY": {
         "executions": [
@@ -55,7 +55,7 @@
         ],
         "last_buy_price": 3196.0,
         "pos": 100,
-        "profit": 19900.0
+        "profit": 49700.0
     },
     "7203 TM JPY": {
         "executions": [
@@ -67,7 +67,7 @@
         ],
         "last_buy_price": 2392.0,
         "pos": 100,
-        "profit": 7850.0
+        "profit": 40150.0
     },
     "9501 TOKIO JPY": {
         "executions": [
@@ -109,7 +109,7 @@
         ],
         "last_buy_price": 399.19,
         "pos": 600,
-        "profit": 19050.0
+        "profit": 32070.0
     },
     "ADBE USD": {
         "executions": [
@@ -137,22 +137,21 @@
                 "date": "2025-04-07T10:00:03Z",
                 "price": "324.94",
                 "volume": "1"
+            },
+            {
+                "date": "2025-05-08T10:44:02Z",
+                "price": "389.93",
+                "volume": "-2"
             }
         ],
-        "last_buy_price": 324.94,
-        "pos": 6,
+        "last_buy_price": 357.43,
+        "pos": 4,
         "profit": 63.38
     },
     "AFRM USD": {
-        "executions": [
-            {
-                "date": "2025-04-25T17:26:27Z",
-                "price": "49.82",
-                "volume": "6"
-            }
-        ],
-        "last_buy_price": 49.82,
-        "pos": 6,
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
         "profit": 0.0
     },
     "AIR EUR": {
@@ -203,10 +202,15 @@
                 "date": "2025-04-09T20:01:05Z",
                 "price": "93.35",
                 "volume": "-7"
+            },
+            {
+                "date": "2025-05-06T22:15:37Z",
+                "price": "102.68",
+                "volume": "-6"
             }
         ],
-        "last_buy_price": 85.57,
-        "pos": 17,
+        "last_buy_price": 94.12,
+        "pos": 11,
         "profit": 165.7
     },
     "AMZN USD": {
@@ -220,10 +224,15 @@
                 "date": "2025-04-04T13:26:29Z",
                 "price": "166.75",
                 "volume": "3"
+            },
+            {
+                "date": "2025-05-12T10:00:01Z",
+                "price": "200.09",
+                "volume": "-3"
             }
         ],
-        "last_buy_price": 166.75,
-        "pos": 6,
+        "last_buy_price": 183.42,
+        "pos": 3,
         "profit": 98.79
     },
     "ANET USD": {
@@ -287,23 +296,21 @@
                 "date": "2025-04-09T20:25:35Z",
                 "price": "77.15",
                 "volume": "-8"
-            }
-        ],
-        "last_buy_price": 70.72,
-        "pos": 27,
-        "profit": -500.27
-    },
-    "BAC USD": {
-        "executions": [
+            },
             {
-                "date": "2025-04-04T04:00:00Z",
-                "price": "37.0",
-                "volume": "14"
+                "date": "2025-04-30T22:06:45Z",
+                "price": "84.86",
+                "volume": "-8"
+            },
+            {
+                "date": "2025-05-06T22:05:00Z",
+                "price": "93.35",
+                "volume": "-7"
             }
         ],
-        "last_buy_price": 37.0,
-        "pos": 14,
-        "profit": 63.38
+        "last_buy_price": 85.57,
+        "pos": 12,
+        "profit": -293.99
     },
     "BAS EUR": {
         "executions": [
@@ -430,7 +437,7 @@
         ],
         "last_buy_price": 38.0,
         "pos": 102,
-        "profit": 938.97
+        "profit": 894.09
     },
     "BMW EUR": {
         "executions": [
@@ -523,11 +530,16 @@
                 "date": "2025-04-07T07:36:57Z",
                 "price": "65.48",
                 "volume": "8"
+            },
+            {
+                "date": "2025-05-09T09:00:37Z",
+                "price": "79.04",
+                "volume": "-19"
             }
         ],
-        "last_buy_price": 65.48,
-        "pos": 66,
-        "profit": -532.62
+        "last_buy_price": 75.46,
+        "pos": 47,
+        "profit": -17.82
     },
     "COIN USD": {
         "executions": [
@@ -539,7 +551,7 @@
         ],
         "last_buy_price": 208.66,
         "pos": 2,
-        "profit": 0.0
+        "profit": -4.51
     },
     "EC USD": {
         "executions": [
@@ -693,7 +705,7 @@
             }
         ],
         "last_buy_price": 158.119,
-        "pos": 49749,
+        "pos": 52691,
         "profit": 0.0
     },
     "EUR USD": {
@@ -770,7 +782,7 @@
             }
         ],
         "last_buy_price": 1.09675,
-        "pos": 49749,
+        "pos": 52511,
         "profit": 0.0
     },
     "GOLD USD": {
@@ -1027,7 +1039,7 @@
             }
         ],
         "last_buy_price": 18.86,
-        "pos": 218,
+        "pos": 143,
         "profit": 4708.33
     },
     "GOOG USD": {
@@ -1043,31 +1055,10 @@
         "profit": 22.24
     },
     "HIMS USD": {
-        "executions": [
-            {
-                "date": "2025-04-07T04:00:00Z",
-                "price": "23.4",
-                "volume": "45"
-            },
-            {
-                "date": "2025-04-23T12:23:40Z",
-                "price": "27.04",
-                "volume": "-10"
-            },
-            {
-                "date": "2025-04-23T14:04:41Z",
-                "price": "27.04",
-                "volume": "-10"
-            },
-            {
-                "date": "2025-04-23T14:04:41Z",
-                "price": "27.04",
-                "volume": "-3"
-            }
-        ],
-        "last_buy_price": 24.79,
-        "pos": 22,
-        "profit": 162.4
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
+        "profit": 225.91
     },
     "HLAG EUR": {
         "executions": [
@@ -1300,11 +1291,22 @@
                 "date": "2025-04-09T20:22:09Z",
                 "price": "134.9",
                 "volume": "-5"
+            },
+            {
+                "date": "2025-05-12T10:29:03Z",
+                "price": "145.8",
+                "volume": "-5"
             }
         ],
-        "last_buy_price": 121.1,
-        "pos": 33,
-        "profit": 496.7
+        "last_buy_price": 133.7,
+        "pos": 28,
+        "profit": 1070.9
+    },
+    "HOOD USD": {
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
+        "profit": 0.0
     },
     "IFX EUR": {
         "executions": [
@@ -1437,11 +1439,21 @@
                 "date": "2025-04-10T09:02:30Z",
                 "price": "29.9",
                 "volume": "-21"
+            },
+            {
+                "date": "2025-05-09T15:49:41Z",
+                "price": "31.74",
+                "volume": "-8"
+            },
+            {
+                "date": "2025-05-09T15:49:41Z",
+                "price": "31.74",
+                "volume": "-11"
             }
         ],
-        "last_buy_price": 26.45,
-        "pos": 143,
-        "profit": 583.385
+        "last_buy_price": 29.095,
+        "pos": 124,
+        "profit": 1416.445
     },
     "LXS EUR": {
         "executions": [
@@ -1709,11 +1721,21 @@
                 "date": "2025-04-09T22:44:26Z",
                 "price": "25.02",
                 "volume": "-25"
+            },
+            {
+                "date": "2025-04-28T14:41:06Z",
+                "price": "26.24",
+                "volume": "-23"
+            },
+            {
+                "date": "2025-05-12T09:09:14Z",
+                "price": "28.86",
+                "volume": "-21"
             }
         ],
-        "last_buy_price": 22.28,
-        "pos": 204,
-        "profit": 1795.69
+        "last_buy_price": 26.46,
+        "pos": 160,
+        "profit": 2625.13
     },
     "MTDR USD": {
         "executions": [
@@ -2313,11 +2335,16 @@
                 "date": "2025-04-07T09:02:29Z",
                 "price": "53.76",
                 "volume": "7"
+            },
+            {
+                "date": "2025-05-05T09:02:14Z",
+                "price": "62.32",
+                "volume": "-10"
             }
         ],
-        "last_buy_price": 53.76,
-        "pos": 17,
-        "profit": 21.92
+        "last_buy_price": 56.7,
+        "pos": 7,
+        "profit": 68.84
     },
     "OMV EUR": {
         "executions": [
@@ -2444,11 +2471,16 @@
                 "date": "2025-04-07T09:02:43Z",
                 "price": "30.96",
                 "volume": "17"
+            },
+            {
+                "date": "2025-05-12T09:41:03Z",
+                "price": "38.41",
+                "volume": "-16"
             }
         ],
-        "last_buy_price": 30.96,
-        "pos": 176,
-        "profit": -1715.73
+        "last_buy_price": 35.21,
+        "pos": 160,
+        "profit": -619.41
     },
     "PBB_EUR": {
         "executions": [
@@ -2666,11 +2698,16 @@
                 "date": "2025-04-07T09:02:25Z",
                 "price": "4.652",
                 "volume": "106"
+            },
+            {
+                "date": "2025-05-12T09:00:33Z",
+                "price": "5.71",
+                "volume": "-106"
             }
         ],
-        "last_buy_price": 4.652,
-        "pos": 738,
-        "profit": 188.458
+        "last_buy_price": 5.235,
+        "pos": 632,
+        "profit": 579.598
     },
     "PBR USD": {
         "executions": [
@@ -2703,6 +2740,18 @@
         "executions": [],
         "last_buy_price": 0.0,
         "pos": 0,
+        "profit": 0.0
+    },
+    "QCOM USD": {
+        "executions": [
+            {
+                "date": "2025-05-01T15:58:00Z",
+                "price": "136.26",
+                "volume": "4"
+            }
+        ],
+        "last_buy_price": 136.26,
+        "pos": 4,
         "profit": 0.0
     },
     "RIG USD": {
@@ -2826,10 +2875,15 @@
                 "date": "2025-04-14T15:34:11Z",
                 "price": "2.22",
                 "volume": "113"
+            },
+            {
+                "date": "2025-05-12T10:00:02Z",
+                "price": "2.66",
+                "volume": "-113"
             }
         ],
-        "last_buy_price": 2.22,
-        "pos": 1278,
+        "last_buy_price": 2.44,
+        "pos": 1165,
         "profit": -2294.37
     },
     "RIO USD": {
@@ -2961,7 +3015,7 @@
             }
         ],
         "last_buy_price": 52.48,
-        "pos": 78,
+        "pos": 68,
         "profit": 840.07
     },
     "SBB.B SEK": {
@@ -3037,11 +3091,16 @@
                 "date": "2025-04-07T03:09:00Z",
                 "price": "97.52",
                 "volume": "51"
+            },
+            {
+                "date": "2025-04-30T09:00:04Z",
+                "price": "122.4",
+                "volume": "-54"
             }
         ],
-        "last_buy_price": 97.52,
-        "pos": 36,
-        "profit": 243.639
+        "last_buy_price": 110.5,
+        "pos": 43,
+        "profit": 1439.08
     },
     "SHOP USD": {
         "executions": [
@@ -3049,10 +3108,15 @@
                 "date": "2025-04-25T17:28:32Z",
                 "price": "97.54",
                 "volume": "3"
+            },
+            {
+                "date": "2025-05-08T13:16:28Z",
+                "price": "85.57",
+                "volume": "3"
             }
         ],
-        "last_buy_price": 97.54,
-        "pos": 3,
+        "last_buy_price": 85.57,
+        "pos": 6,
         "profit": 0.0
     },
     "TEG EUR": {
@@ -3072,31 +3136,16 @@
         "pos": 36,
         "profit": 243.639
     },
+    "TEM USD": {
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
+        "profit": -2.7
+    },
     "TTD USD": {
-        "executions": [
-            {
-                "date": "2025-03-31T10:00:00Z",
-                "price": "54.25",
-                "volume": "10"
-            },
-            {
-                "date": "2025-04-04T12:13:33Z",
-                "price": "48.3",
-                "volume": "11"
-            },
-            {
-                "date": "2025-04-07T10:00:00Z",
-                "price": "43.78",
-                "volume": "12"
-            },
-            {
-                "date": "2025-04-24T18:17:24Z",
-                "price": "52.69",
-                "volume": "-12"
-            }
-        ],
-        "last_buy_price": 48.3,
-        "pos": 21,
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
         "profit": 133.01
     },
     "TWEKA EUR": {
@@ -3145,7 +3194,7 @@
             }
         ],
         "last_buy_price": 3.9127,
-        "pos": 134014,
+        "pos": 150351,
         "profit": 0.0
     },
     "VALE USD": {
@@ -3403,11 +3452,16 @@
                 "date": "2025-04-04T12:22:23Z",
                 "price": "86.2",
                 "volume": "6"
+            },
+            {
+                "date": "2025-04-28T09:05:30Z",
+                "price": "99.14",
+                "volume": "-39"
             }
         ],
-        "last_buy_price": 86.2,
-        "pos": 61,
-        "profit": -412.16
+        "last_buy_price": 91.32,
+        "pos": 22,
+        "profit": 5.08
     },
     "ZIM USD": {
         "executions": [
@@ -3450,10 +3504,25 @@
                 "date": "2025-04-11T21:54:47Z",
                 "price": "13.88",
                 "volume": "-44"
+            },
+            {
+                "date": "2025-04-30T19:02:00Z",
+                "price": "15.26",
+                "volume": "-39"
+            },
+            {
+                "date": "2025-04-30T19:02:00Z",
+                "price": "15.26",
+                "volume": "-1"
+            },
+            {
+                "date": "2025-05-12T15:05:04Z",
+                "price": "16.79",
+                "volume": "-36"
             }
         ],
-        "last_buy_price": 12.72,
-        "pos": 166,
-        "profit": -89.27
+        "last_buy_price": 15.39,
+        "pos": 90,
+        "profit": 130.73
     }
 }
