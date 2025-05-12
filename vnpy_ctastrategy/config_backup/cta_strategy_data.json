@@ -149,9 +149,15 @@
         "profit": 63.38
     },
     "AFRM USD": {
-        "executions": [],
-        "last_buy_price": 0.0,
-        "pos": 0,
+        "executions": [
+            {
+                "date": "2025-05-08T16:16:00Z",
+                "price": "49.37",
+                "volume": "6"
+            }
+        ],
+        "last_buy_price": 49.37,
+        "pos": 6,
         "profit": 0.0
     },
     "AIR EUR": {
@@ -537,7 +543,7 @@
                 "volume": "-19"
             }
         ],
-        "last_buy_price": 75.46,
+        "last_buy_price": 72.45,
         "pos": 47,
         "profit": -17.82
     },
@@ -1303,8 +1309,14 @@
         "profit": 1070.9
     },
     "HOOD USD": {
-        "executions": [],
-        "last_buy_price": 0.0,
+        "executions": [
+            {
+                "date": "2023-05-05T10:11:00Z",
+                "price": "47.02",
+                "volume": "9"
+            }
+        ],
+        "last_buy_price": 47.02,
         "pos": 0,
         "profit": 0.0
     },
@@ -2308,13 +2320,7 @@
         "pos": 295,
         "profit": 16289.62
     },
-    "NVDA USD": {
-        "executions": [],
-        "last_buy_price": 0.0,
-        "pos": 0,
-        "profit": 0.0
-    },
-    "NVO EUR": {
+    "NOV EUR": {
         "executions": [
             {
                 "date": "2025-03-31T09:02:00Z",
@@ -2345,6 +2351,12 @@
         "last_buy_price": 56.7,
         "pos": 7,
         "profit": 68.84
+    },
+    "NVDA USD": {
+        "executions": [],
+        "last_buy_price": 0.0,
+        "pos": 0,
+        "profit": 0.0
     },
     "OMV EUR": {
         "executions": [
@@ -3012,9 +3024,14 @@
                 "date": "2025-04-08T21:01:37Z",
                 "price": "52.48",
                 "volume": "10"
+            },
+            {
+                "date": "2025-04-23T04:00:00Z",
+                "price": "60.57",
+                "volume": "-10"
             }
         ],
-        "last_buy_price": 52.48,
+        "last_buy_price": 55.5,
         "pos": 68,
         "profit": 840.07
     },
@@ -3113,28 +3130,16 @@
                 "date": "2025-05-08T13:16:28Z",
                 "price": "85.57",
                 "volume": "3"
-            }
-        ],
-        "last_buy_price": 85.57,
-        "pos": 6,
-        "profit": 0.0
-    },
-    "TEG EUR": {
-        "executions": [
-            {
-                "date": "2023-07-03T03:36:50Z",
-                "price": "8.656",
-                "volume": "81.0"
             },
             {
-                "date": "2023-09-08T09:53:37Z",
-                "price": "11.235",
-                "volume": "-45"
+                "date": "2025-05-12T19:01:42Z",
+                "price": "104.81",
+                "volume": "-3"
             }
         ],
-        "last_buy_price": 8.88,
-        "pos": 36,
-        "profit": 243.639
+        "last_buy_price": 94.12,
+        "pos": 3,
+        "profit": 0.0
     },
     "TEM USD": {
         "executions": [],

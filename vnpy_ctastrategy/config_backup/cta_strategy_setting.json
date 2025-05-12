@@ -430,7 +430,7 @@
         },
         "vt_symbol": "NVDA-USD-STK.SMART"
     },
-    "NVO EUR": {
+    "NOV EUR": {
         "class_name": "GridBuyStrategy",
         "setting": {
             "buy_amount": 500.0,
