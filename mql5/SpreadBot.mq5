@@ -5,7 +5,7 @@
 //|  kazda para ma wlasny TP wyrażony w kwocie EUR.                  |
 //+------------------------------------------------------------------+
 #property copyright "Custom EA"
-#property version   "1.85"
+#property version   "2.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -16,7 +16,9 @@ input string InpSymbol1 = "DE30.pro";       // Symbol 1 - DAX (SHORT) - ZAWSZE W
 input string InpSymbol2 = "US100.pro";      // Symbol 2 - Nasdaq (LONG) - ZAWSZE WYKONYWANY DRUGI
 
 input group "=== Wielkosc pozycji ==="
-input double InpLots = 0.004;               // Baza: Lot na DE30 (US100 dopasuje sie dynamicznie)
+input double InpLots                 = 0.006;  // Baza: Lot na DE30 (US100 dopasuje sie dynamicznie)
+input double InpDaxPositionTolerance = 0.001;  // Tolerancja lota DE30 (+/-) dla min. tracking error
+input double InpMaxPositionSize      = 0.03;   // Maksymalny dozwolony wolumen pojedynczej pozycji (Hard Limit)
 
 input group "=== Take Profit (Kwotowy) ==="
 input double InpTakeProfitEUR = 5.0;        // TP na pare w kwocie (EUR)
@@ -67,7 +69,7 @@ int OnInit()
    Print("DE30vsUS100 EA zainicjowany. MagicBase=",InpMagicBase,
          " StartGap=",InpStartGapPoints," GridStep=",InpGridStepPoints,
          " TP_EUR=",InpTakeProfitEUR, " MaxPairs=",InpMaxPairs,
-         " StartDelay=",InpStartDelaySec,"s");
+         " DaxTolerance=",InpDaxPositionTolerance, " MaxPosSize=",InpMaxPositionSize);
    return(INIT_SUCCEEDED);
   }
 
@@ -103,27 +105,33 @@ bool IsSymbolTradable(const string sym)
   }
 
 //+------------------------------------------------------------------+
-//| Normalizacja lota do min/max/step danego symbolu                 |
+//| Normalizacja lota do min/max/step oraz InpMaxPositionSize        |
 //+------------------------------------------------------------------+
-double NormalizeLot(const string sym,double lots)
+double NormalizeLot(const string sym, double lots)
   {
-   double minLot = SymbolInfoDouble(sym,SYMBOL_VOLUME_MIN);
-   double maxLot = SymbolInfoDouble(sym,SYMBOL_VOLUME_MAX);
-   double step   = SymbolInfoDouble(sym,SYMBOL_VOLUME_STEP);
-   if(step<=0) step=0.001;
+   double minLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN);
+   double maxLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX);
+   double step   = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
+   if(step <= 0) step = 0.001;
+
+   // Uwzględnienie InpMaxPositionSize jako dodatkowego limitu górnego
+   if(InpMaxPositionSize > 0 && maxLot > InpMaxPositionSize)
+      maxLot = InpMaxPositionSize;
 
    if(lots < minLot) lots = minLot;
 
-   double norm = MathRound(lots/step)*step;
-   if(norm<minLot) norm=minLot;
-   if(norm>maxLot) norm=maxLot;
+   double norm = MathRound(lots / step) * step;
+   if(norm < minLot) norm = minLot;
+   if(norm > maxLot) norm = maxLot;
+
    return norm;
   }
 
 //+------------------------------------------------------------------+
-//| Wylicza zbalansowany lot dla US100 z uwzględnieniem ContractSize |
+//| Szuka optymalnych wolumenow (DE30 i US100) minimalizujacych      |
+//| Tracking Error w zakresie InpLots +/- InpDaxPositionTolerance    |
 //+------------------------------------------------------------------+
-double CalculateBalancedUS100Lot(double daxLots)
+void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
   {
    double daxPrice = SymbolInfoDouble(InpSymbol1, SYMBOL_BID);
    double nqPrice  = SymbolInfoDouble(InpSymbol2, SYMBOL_ASK);
@@ -138,16 +146,49 @@ double CalculateBalancedUS100Lot(double daxLots)
    if(!SymbolInfoDouble(eurusdSym, SYMBOL_BID)) eurusdSym = "EURUSD";
    double eurusdPrice = SymbolInfoDouble(eurusdSym, SYMBOL_BID);
 
+   // Zabezpieczenie na przypadek braku kwotowań
    if(daxPrice <= 0 || nqPrice <= 0 || eurusdPrice <= 0)
      {
-      return daxLots;
+      outDaxLots = NormalizeLot(InpSymbol1, InpLots);
+      outNqLots  = NormalizeLot(InpSymbol2, InpLots);
+      return;
      }
 
-   double daxValueEUR = daxLots * daxPrice * daxContractSize;
-   double nqOneLotValueEUR = (nqPrice * nqContractSize) / eurusdPrice;
-   double targetNqLots = daxValueEUR / nqOneLotValueEUR;
+   double daxStep = SymbolInfoDouble(InpSymbol1, SYMBOL_VOLUME_STEP);
+   if(daxStep <= 0) daxStep = 0.001;
 
-   return NormalizeLot(InpSymbol2, targetNqLots);
+   double minDax = NormalizeLot(InpSymbol1, InpLots - InpDaxPositionTolerance);
+   double maxDax = NormalizeLot(InpSymbol1, InpLots + InpDaxPositionTolerance);
+
+   double nqOneLotValueEUR = (nqPrice * nqContractSize) / eurusdPrice;
+
+   double bestDaxLots         = NormalizeLot(InpSymbol1, InpLots);
+   double bestNqLots          = NormalizeLot(InpSymbol2, (bestDaxLots * daxPrice * daxContractSize) / nqOneLotValueEUR);
+   double minTrackingErrorEUR = 9999999.0;
+
+   // Pętla przechodząca przez wszystkie akceptowalne wolumeny DAX
+   for(double candDax = minDax; candDax <= maxDax + 0.000001; candDax += daxStep)
+     {
+      candDax = NormalizeLot(InpSymbol1, candDax);
+
+      double daxValueEUR      = candDax * daxPrice * daxContractSize;
+      double idealNqLots     = daxValueEUR / nqOneLotValueEUR;
+      double normNqLots      = NormalizeLot(InpSymbol2, idealNqLots);
+
+      double actualNqValueEUR = normNqLots * nqOneLotValueEUR;
+      double trackingErrorEUR = MathAbs(daxValueEUR - actualNqValueEUR);
+
+      // Wybieramy kombinację o najmniejszym błędzie dopasowania (EUR)
+      if(trackingErrorEUR < minTrackingErrorEUR)
+        {
+         minTrackingErrorEUR = trackingErrorEUR;
+         bestDaxLots         = candDax;
+         bestNqLots          = normNqLots;
+        }
+     }
+
+   outDaxLots = bestDaxLots;
+   outNqLots  = bestNqLots;
   }
 
 //+------------------------------------------------------------------+
@@ -192,8 +233,14 @@ bool OpenPair(int idx, double refSpread)
    trade.SetExpertMagicNumber(magic);
    trade.SetDeviationInPoints(InpSlippagePoints);
 
-   double lot1 = NormalizeLot(InpSymbol1, InpLots);
-   double lot2 = CalculateBalancedUS100Lot(lot1);
+   // Dynamiczne wyliczenie zoptymalizowanych wolumenow z minimalnym tracking error
+   double lot1 = 0.0;
+   double lot2 = 0.0;
+   CalculateOptimalPairLots(lot1, lot2);
+
+   // Zabezpieczające upewnienie się, że loty nie przekraczają InpMaxPositionSize
+   lot1 = NormalizeLot(InpSymbol1, lot1);
+   lot2 = NormalizeLot(InpSymbol2, lot2);
 
    // 1. NAJPIERW DAX (DE30)
    trade.SetTypeFillingBySymbol(InpSymbol1);
