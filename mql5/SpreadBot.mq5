@@ -1,8 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                        DE30vsUS100_SpreadEA.mq5  |
-//|  EA handluje parami: DE30.pro SHORT + US100.pro LONG             |
-//|  Otwiera kolejne pary gdy spread MALEJE (co InpGridStepPoints),  |
-//|  kazda para ma wlasny TP wyrażony w kwocie EUR.                  |
+//|                                     DE30vsUS100_SpreadEA.mq5     |
+//|   EA handluje parami: DE30.pro SHORT + US100.pro LONG            |
+//|   Otwiera kolejne pary gdy spread MALEJE (co InpGridStepPoints), |
+//|   kazda para ma wlasny TP wyrażony w kwocie EUR.                   |
 //+------------------------------------------------------------------+
 #property copyright "Custom EA"
 #property version   "2.00"
@@ -12,20 +12,19 @@
 
 //--- Parametry wejsciowe
 input group "=== Instrumenty ==="
-input string InpSymbol1 = "DE30.pro";       // Symbol 1 - DAX (SHORT) - ZAWSZE WYKONYWANY PIERWSZY
-input string InpSymbol2 = "US100.pro";      // Symbol 2 - Nasdaq (LONG) - ZAWSZE WYKONYWANY DRUGI
+input string InpSymbol1 = "DE30.pro";      // Symbol 1 - DAX (SHORT) - ZAWSZE WYKONYWANY PIERWSZY
+input string InpSymbol2 = "US100.pro";     // Symbol 2 - Nasdaq (LONG) - ZAWSZE WYKONYWANY DRUGI
 
 input group "=== Wielkosc pozycji ==="
-input double InpLots                 = 0.006;  // Baza: Lot na DE30 (US100 dopasuje sie dynamicznie)
-input double InpDaxPositionTolerance = 0.001;  // Tolerancja lota DE30 (+/-) dla min. tracking error
-input double InpMaxPositionSize      = 0.03;   // Maksymalny dozwolony wolumen pojedynczej pozycji (Hard Limit)
+input double InpLots                = 0.006;  // Sztywny lot na DE30 (US100 dopasuje sie dynamicznie)
+input double InpMaxPositionSize     = 0.015;   // Maksymalny dozwolony wolumen pojedynczej pozycji (Hard Limit)
 
 input group "=== Take Profit (Kwotowy) ==="
 input double InpTakeProfitEUR = 5.0;        // TP na pare w kwocie (EUR)
 
 input group "=== Logika wejscia ==="
 input double InpStartGapPoints  = 3000;     // Prog startowy: otwieramy 1. pare gdy spread <= ta wartosc
-input double InpGridStepPoints  = 50;       // Co ile punktow SPADKU spreadu dokladamy kolejna pare
+input double InpGridStepPoints  = 60;       // Co ile punktow SPADKU spreadu dokladamy kolejna pare
 input double InpRangeMin        = 0;        // Dolna granica spreadu do handlu (0 = wylaczone)
 input double InpRangeMax        = 0;        // Gorna granica spreadu do handlu (0 = wylaczone)
 input int    InpMaxPairs        = 30;       // Maksymalna liczba jednoczesnie otwartych par
@@ -69,7 +68,7 @@ int OnInit()
    Print("DE30vsUS100 EA zainicjowany. MagicBase=",InpMagicBase,
          " StartGap=",InpStartGapPoints," GridStep=",InpGridStepPoints,
          " TP_EUR=",InpTakeProfitEUR, " MaxPairs=",InpMaxPairs,
-         " DaxTolerance=",InpDaxPositionTolerance, " MaxPosSize=",InpMaxPositionSize);
+         " DaxLots=",InpLots, " MaxPosSize=",InpMaxPositionSize);
    return(INIT_SUCCEEDED);
   }
 
@@ -128,11 +127,13 @@ double NormalizeLot(const string sym, double lots)
   }
 
 //+------------------------------------------------------------------+
-//| Szuka optymalnych wolumenow (DE30 i US100) minimalizujacych      |
-//| Tracking Error w zakresie InpLots +/- InpDaxPositionTolerance    |
+//| Sztywny wolumen DAX (InpLots) + dynamiczne dopasowanie TYLKO NQ  |
 //+------------------------------------------------------------------+
 void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
   {
+   // DAX ma zawsze sztywną wartość zdefiniowaną w InpLots
+   outDaxLots = NormalizeLot(InpSymbol1, InpLots);
+
    double daxPrice = SymbolInfoDouble(InpSymbol1, SYMBOL_BID);
    double nqPrice  = SymbolInfoDouble(InpSymbol2, SYMBOL_ASK);
 
@@ -149,46 +150,25 @@ void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
    // Zabezpieczenie na przypadek braku kwotowań
    if(daxPrice <= 0 || nqPrice <= 0 || eurusdPrice <= 0)
      {
-      outDaxLots = NormalizeLot(InpSymbol1, InpLots);
-      outNqLots  = NormalizeLot(InpSymbol2, InpLots);
+      outNqLots = NormalizeLot(InpSymbol2, InpLots);
       return;
      }
 
-   double daxStep = SymbolInfoDouble(InpSymbol1, SYMBOL_VOLUME_STEP);
-   if(daxStep <= 0) daxStep = 0.001;
+   // Wartość pozycji DAX w EUR
+   double daxValueEUR = outDaxLots * daxPrice * daxContractSize;
 
-   double minDax = NormalizeLot(InpSymbol1, InpLots - InpDaxPositionTolerance);
-   double maxDax = NormalizeLot(InpSymbol1, InpLots + InpDaxPositionTolerance);
-
+   // Wartość 1 lota NQ w EUR
    double nqOneLotValueEUR = (nqPrice * nqContractSize) / eurusdPrice;
 
-   double bestDaxLots         = NormalizeLot(InpSymbol1, InpLots);
-   double bestNqLots          = NormalizeLot(InpSymbol2, (bestDaxLots * daxPrice * daxContractSize) / nqOneLotValueEUR);
-   double minTrackingErrorEUR = 9999999.0;
-
-   // Pętla przechodząca przez wszystkie akceptowalne wolumeny DAX
-   for(double candDax = minDax; candDax <= maxDax + 0.000001; candDax += daxStep)
+   if(nqOneLotValueEUR <= 0)
      {
-      candDax = NormalizeLot(InpSymbol1, candDax);
-
-      double daxValueEUR      = candDax * daxPrice * daxContractSize;
-      double idealNqLots     = daxValueEUR / nqOneLotValueEUR;
-      double normNqLots      = NormalizeLot(InpSymbol2, idealNqLots);
-
-      double actualNqValueEUR = normNqLots * nqOneLotValueEUR;
-      double trackingErrorEUR = MathAbs(daxValueEUR - actualNqValueEUR);
-
-      // Wybieramy kombinację o najmniejszym błędzie dopasowania (EUR)
-      if(trackingErrorEUR < minTrackingErrorEUR)
-        {
-         minTrackingErrorEUR = trackingErrorEUR;
-         bestDaxLots         = candDax;
-         bestNqLots          = normNqLots;
-        }
+      outNqLots = NormalizeLot(InpSymbol2, InpLots);
+      return;
      }
 
-   outDaxLots = bestDaxLots;
-   outNqLots  = bestNqLots;
+   // Wyliczenie idealnego wolumenu NQ pokrywającego wartość DAX i normalizacja do kroku brokera
+   double idealNqLots = daxValueEUR / nqOneLotValueEUR;
+   outNqLots = NormalizeLot(InpSymbol2, idealNqLots);
   }
 
 //+------------------------------------------------------------------+
@@ -233,7 +213,7 @@ bool OpenPair(int idx, double refSpread)
    trade.SetExpertMagicNumber(magic);
    trade.SetDeviationInPoints(InpSlippagePoints);
 
-   // Dynamiczne wyliczenie zoptymalizowanych wolumenow z minimalnym tracking error
+   // Wyliczenie stałego DAX i dynamicznego NQ
    double lot1 = 0.0;
    double lot2 = 0.0;
    CalculateOptimalPairLots(lot1, lot2);
@@ -321,23 +301,23 @@ void UpdateDashboard(int activeCount, double openCostSpread, double closableSpre
    for(int p = 0; p < InpDashboardPadding; p++)
       txt += "\n";
 
-   txt += "                              === DE30 vs US100 Spread EA ===\n";
+   txt += "                             === DE30 vs US100 Spread EA ===\n";
 
    if(TimeCurrent() < tradingAllowedTime)
      {
       int remainingSec = (int)(tradingAllowedTime - TimeCurrent());
-      txt += "                              [ STATUS: Oczekiwanie po przerwie nocnej: " + IntegerToString(remainingSec) + "s ]\n";
+      txt += "                             [ STATUS: Oczekiwanie po przerwie nocnej: " + IntegerToString(remainingSec) + "s ]\n";
      }
 
-   txt += "                              Aktywne pary: " + IntegerToString(activeCount) + " / " + IntegerToString(InpMaxPairs) + "\n";
-   txt += "                              Spread (otwarcie): " + DoubleToString(openCostSpread, 2) + " pkt | (zamkniecie): " + DoubleToString(closableSpread, 2) + " pkt\n";
-   txt += "                              ---------------------------------------------------\n";
-   txt += "                                  #   |  Spread Wejscia  |    Profit (EUR)\n";
-   txt += "                              ---------------------------------------------------\n";
+   txt += "                             Aktywne pary: " + IntegerToString(activeCount) + " / " + IntegerToString(InpMaxPairs) + "\n";
+   txt += "                             Spread (otwarcie): " + DoubleToString(openCostSpread, 2) + " pkt | (zamkniecie): " + DoubleToString(closableSpread, 2) + " pkt\n";
+   txt += "                             ---------------------------------------------------\n";
+   txt += "                                 #   |   Spread Wejscia  |    Profit (EUR)\n";
+   txt += "                             ---------------------------------------------------\n";
 
    if(isActive[1])
      {
-      txt += "                                #01   |      " + DoubleToString(entrySpread[1], 1) + "       |     " +
+      txt += "                                #01   |      " + DoubleToString(entrySpread[1], 1) + "        |      " +
              DoubleToString(pairProfitEUR[1], 2) + " EUR\n";
      }
 
@@ -361,13 +341,13 @@ void UpdateDashboard(int activeCount, double openCostSpread, double closableSpre
          int idx = activeIndices[i];
          string pIdx = (idx < 10 ? " #0" : " #") + IntegerToString(idx);
 
-         txt += "                               " + pIdx + "   |      " + DoubleToString(entrySpread[idx], 1) + "       |     " +
+         txt += "                               " + pIdx + "   |      " + DoubleToString(entrySpread[idx], 1) + "        |      " +
                 DoubleToString(pairProfitEUR[idx], 2) + " EUR\n";
         }
      }
    else if(!isActive[1])
      {
-      txt += "                                       ( Brak aktywnych pozycji )\n";
+      txt += "                                            ( Brak aktywnych pozycji )\n";
      }
 
    Comment(txt);
