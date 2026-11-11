@@ -1,74 +1,76 @@
 //+------------------------------------------------------------------+
 //|                                     DE30vsUS100_SpreadEA.mq5     |
-//|   EA handluje parami: DE30.pro SHORT + US100.pro LONG            |
-//|   Otwiera kolejne pary gdy spread MALEJE (co InpGridStepPoints), |
-//|   kazda para ma wlasny TP wyrażony w kwocie EUR.                   |
+//|   EA trades pairs: DE30.pro SHORT + US100.pro LONG               |
+//|   Opens additional pairs as the spread DECREASES. The distance   |
+//|   between entries is DYNAMIC: InpOpenRangePoints divided by the  |
+//|   number of pairs that can still be opened.                      |
+//|   Each pair has its own TP expressed in EUR.                     |
 //+------------------------------------------------------------------+
 #property copyright "Custom EA"
-#property version   "2.00"
+#property version   "2.10"
 #property strict
 
 #include <Trade\Trade.mqh>
 
-//--- Parametry wejsciowe
-input group "=== Instrumenty ==="
-input string InpSymbol1 = "DE30.pro";      // Symbol 1 - DAX (SHORT) - ZAWSZE WYKONYWANY PIERWSZY
-input string InpSymbol2 = "US100.pro";     // Symbol 2 - Nasdaq (LONG) - ZAWSZE WYKONYWANY DRUGI
+//--- Input parameters
+input group "=== Instruments ==="
+input string InpSymbol1 = "DE30.pro";      // Symbol 1 - DAX (SHORT) - ALWAYS EXECUTED FIRST
+input string InpSymbol2 = "US100.pro";     // Symbol 2 - Nasdaq (LONG) - ALWAYS EXECUTED SECOND
 
-input group "=== Wielkosc pozycji ==="
-input double InpLots                = 0.006;  // Sztywny lot na DE30 (US100 dopasuje sie dynamicznie)
-input double InpMaxPositionSize     = 0.015;   // Maksymalny dozwolony wolumen pojedynczej pozycji (Hard Limit)
+input group "=== Position size ==="
+input double InpLots                = 0.006;  // Fixed lot on DE30 (US100 lot is matched dynamically)
+input double InpMaxPositionSize     = 0.015;  // Max allowed volume of a single position (hard limit)
 
-input group "=== Take Profit (Kwotowy) ==="
-input double InpTakeProfitEUR = 5.0;        // TP na pare w kwocie (EUR)
+input group "=== Take Profit (money based) ==="
+input double InpTakeProfitEUR = 5.0;        // TP per pair in money (EUR)
 
-input group "=== Logika wejscia ==="
-input double InpStartGapPoints  = 3000;     // Prog startowy: otwieramy 1. pare gdy spread <= ta wartosc
-input double InpGridStepPoints  = 60;       // Co ile punktow SPADKU spreadu dokladamy kolejna pare
-input double InpRangeMin        = 0;        // Dolna granica spreadu do handlu (0 = wylaczone)
-input double InpRangeMax        = 0;        // Gorna granica spreadu do handlu (0 = wylaczone)
-input int    InpMaxPairs        = 30;       // Maksymalna liczba jednoczesnie otwartych par
+input group "=== Entry logic ==="
+input double InpStartGapPoints  = 3000;     // Start threshold: open the 1st pair when spread <= this value
+input double InpOpenRangePoints = 2000;     // Open range: step = OpenRange / (pairs still to open); last step = OpenRange / 2
+input double InpRangeMin        = 0;        // Lower spread limit for trading (0 = disabled)
+input double InpRangeMax        = 0;        // Upper spread limit for trading (0 = disabled)
+input int    InpMaxPairs        = 30;       // Max number of simultaneously open pairs
 
-input group "=== Wyglad Panelu ==="
-input int    InpDashboardPadding = 18;      // Liczba pustych wierszy (przesun panel w dol)
+input group "=== Dashboard ==="
+input int    InpDashboardPadding = 18;      // Number of empty lines (moves the panel down)
 
-input group "=== Identyfikacja ==="
-input int    InpMagicBase       = 555000;   // Bazowy magic number (kazda para = MagicBase + index)
-input string InpCommentPrefix   = "DE30vsUS100"; // Prefiks komentarza pozycji
+input group "=== Identification ==="
+input int    InpMagicBase       = 555000;   // Base magic number (each pair = MagicBase + index)
+input string InpCommentPrefix   = "DE30vsUS100"; // Position comment prefix
 
-input group "=== Zabezpieczenia i Czas ==="
-input int    InpStartDelaySec       = 60;   // Opuznienie otwarcia po przerwie nocnej (sekundy)
-input int    InpMinTradeIntervalSec = 3;    // Min. czas przerwy miedzy transakcjami (sekundy)
-input int    InpMaxQuoteAgeSec      = 120;  // Maks. wiek kwotowania (s), zeby uznac instrument za "tradowalny"
-input int    InpSlippagePoints      = 50;   // Dozwolony poslizg (w punktach) przy market execution
-input int    InpTimerMS             = 500;  // Czestotliwosc timera (ms) dla Live Trading
-input int    InpOrphanDelaySec      = 5;    // Czas oczekiwania (s) przed uznaniem nogi za osierocona
+input group "=== Safety and timing ==="
+input int InpStartDelaySec       = 60;      // Delay before opening after the night break (seconds)
+input int InpMinTradeIntervalSec = 3;       // Min. pause between trades (seconds)
+input int InpMaxQuoteAgeSec      = 120;     // Max quote age (s) for an instrument to be considered tradable
+input int InpSlippagePoints      = 50;      // Allowed slippage (points) for market execution
+input int InpTimerMS             = 500;     // Timer frequency (ms) for live trading
+input int InpOrphanDelaySec      = 5;       // Wait time (s) before a leg is considered orphaned
 
 CTrade trade;
 
-//--- Zmienne kontroli czasu
-ulong    lastTransactionTime = 0;    // Czas ostatniej transakcji w milisekundach
-datetime tradingAllowedTime  = 0;    // Czas (timestamp), od ktorego mozna otwierac nowe pozycje
-bool     wasSessionBreak     = false;// Flaga informująca, czy wystąpiła przerwa handlowa
+//--- Time control variables
+ulong    lastTransactionTime = 0;    // Time of last transaction in milliseconds
+datetime tradingAllowedTime  = 0;    // Timestamp from which new positions may be opened
+bool     wasSessionBreak     = false;// Flag: was there a trading break
 
 //+------------------------------------------------------------------+
 int OnInit()
   {
    if(!SymbolSelect(InpSymbol1,true))
-      Print("UWAGA: nie mozna wybrac symbolu ",InpSymbol1);
+      Print("WARNING: cannot select symbol ",InpSymbol1);
    if(!SymbolSelect(InpSymbol2,true))
-      Print("UWAGA: nie mozna wybrac symbolu ",InpSymbol2);
+      Print("WARNING: cannot select symbol ",InpSymbol2);
 
    trade.SetTypeFillingBySymbol(InpSymbol1);
    trade.SetDeviationInPoints(InpSlippagePoints);
 
-   // Uruchomienie timera dla handlu na zywo
+   // Start the timer for live trading
    EventSetMillisecondTimer(InpTimerMS);
 
-   Print("DE30vsUS100 EA zainicjowany. MagicBase=",InpMagicBase,
-         " StartGap=",InpStartGapPoints," GridStep=",InpGridStepPoints,
-         " TP_EUR=",InpTakeProfitEUR, " MaxPairs=",InpMaxPairs,
-         " DaxLots=",InpLots, " MaxPosSize=",InpMaxPositionSize);
+   Print("DE30vsUS100 EA initialized. MagicBase=",InpMagicBase,
+         " StartGap=",InpStartGapPoints," OpenRange=",InpOpenRangePoints,
+         " TP_EUR=",InpTakeProfitEUR," MaxPairs=",InpMaxPairs,
+         " DaxLots=",InpLots," MaxPosSize=",InpMaxPositionSize);
    return(INIT_SUCCEEDED);
   }
 
@@ -80,7 +82,7 @@ void OnDeinit(const int reason)
   }
 
 //+------------------------------------------------------------------+
-//| Czy instrument jest w tej chwili tradowalny                      |
+//| Is the instrument currently tradable                             |
 //+------------------------------------------------------------------+
 bool IsSymbolTradable(const string sym)
   {
@@ -104,7 +106,7 @@ bool IsSymbolTradable(const string sym)
   }
 
 //+------------------------------------------------------------------+
-//| Normalizacja lota do min/max/step oraz InpMaxPositionSize        |
+//| Normalize lot to min/max/step and InpMaxPositionSize             |
 //+------------------------------------------------------------------+
 double NormalizeLot(const string sym, double lots)
   {
@@ -113,7 +115,7 @@ double NormalizeLot(const string sym, double lots)
    double step   = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
    if(step <= 0) step = 0.001;
 
-   // Uwzględnienie InpMaxPositionSize jako dodatkowego limitu górnego
+   // InpMaxPositionSize acts as an additional upper limit
    if(InpMaxPositionSize > 0 && maxLot > InpMaxPositionSize)
       maxLot = InpMaxPositionSize;
 
@@ -127,11 +129,11 @@ double NormalizeLot(const string sym, double lots)
   }
 
 //+------------------------------------------------------------------+
-//| Sztywny wolumen DAX (InpLots) + dynamiczne dopasowanie TYLKO NQ  |
+//| Fixed DAX volume (InpLots) + dynamic matching of NQ ONLY         |
 //+------------------------------------------------------------------+
 void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
   {
-   // DAX ma zawsze sztywną wartość zdefiniowaną w InpLots
+   // DAX always uses the fixed value defined in InpLots
    outDaxLots = NormalizeLot(InpSymbol1, InpLots);
 
    double daxPrice = SymbolInfoDouble(InpSymbol1, SYMBOL_BID);
@@ -147,17 +149,17 @@ void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
    if(!SymbolInfoDouble(eurusdSym, SYMBOL_BID)) eurusdSym = "EURUSD";
    double eurusdPrice = SymbolInfoDouble(eurusdSym, SYMBOL_BID);
 
-   // Zabezpieczenie na przypadek braku kwotowań
+   // Safety net in case of missing quotes
    if(daxPrice <= 0 || nqPrice <= 0 || eurusdPrice <= 0)
      {
       outNqLots = NormalizeLot(InpSymbol2, InpLots);
       return;
      }
 
-   // Wartość pozycji DAX w EUR
+   // DAX position value in EUR
    double daxValueEUR = outDaxLots * daxPrice * daxContractSize;
 
-   // Wartość 1 lota NQ w EUR
+   // Value of 1 NQ lot in EUR
    double nqOneLotValueEUR = (nqPrice * nqContractSize) / eurusdPrice;
 
    if(nqOneLotValueEUR <= 0)
@@ -166,13 +168,31 @@ void CalculateOptimalPairLots(double &outDaxLots, double &outNqLots)
       return;
      }
 
-   // Wyliczenie idealnego wolumenu NQ pokrywającego wartość DAX i normalizacja do kroku brokera
+   // Ideal NQ volume covering the DAX value, normalized to broker step
    double idealNqLots = daxValueEUR / nqOneLotValueEUR;
    outNqLots = NormalizeLot(InpSymbol2, idealNqLots);
   }
 
 //+------------------------------------------------------------------+
-//| Szuka otwartej pozycji na danym symbolu z danym magic            |
+//| Dynamic grid step                                                |
+//| step = InpOpenRangePoints / (pairs that can still be opened)     |
+//| The divisor is never lower than 2, so the last pair is opened    |
+//| after OpenRange / 2 points (e.g. 1000 for a range of 2000).      |
+//| Example (range 2000): 40 left -> 50, 39 left -> 51.3, ...,       |
+//| 2 left -> 1000, 1 left -> 1000.                                  |
+//+------------------------------------------------------------------+
+double CalculateDynamicStep(const int activeCount)
+  {
+   int remaining = InpMaxPairs - activeCount;   // pairs that can still be opened
+   if(remaining < 1)
+      return 0.0;
+
+   int divisor = (remaining < 2) ? 2 : remaining;
+   return InpOpenRangePoints / (double)divisor;
+  }
+
+//+------------------------------------------------------------------+
+//| Finds an open position on a given symbol with a given magic      |
 //+------------------------------------------------------------------+
 ulong FindPositionTicket(const string sym,long magic)
   {
@@ -188,7 +208,7 @@ ulong FindPositionTicket(const string sym,long magic)
   }
 
 //+------------------------------------------------------------------+
-//| Pierwszy wolny indeks pary (1..InpMaxPairs)                      |
+//| First free pair index (1..InpMaxPairs)                           |
 //+------------------------------------------------------------------+
 int FindNextFreeIndex()
   {
@@ -203,7 +223,7 @@ int FindNextFreeIndex()
   }
 
 //+------------------------------------------------------------------+
-//| Otwiera pare: NAJPIERW DE30 SHORT, NASTEPNIE US100 LONG          |
+//| Opens a pair: FIRST DE30 SHORT, THEN US100 LONG                  |
 //+------------------------------------------------------------------+
 bool OpenPair(int idx, double refSpread)
   {
@@ -213,29 +233,29 @@ bool OpenPair(int idx, double refSpread)
    trade.SetExpertMagicNumber(magic);
    trade.SetDeviationInPoints(InpSlippagePoints);
 
-   // Wyliczenie stałego DAX i dynamicznego NQ
+   // Fixed DAX lot and dynamic NQ lot
    double lot1 = 0.0;
    double lot2 = 0.0;
    CalculateOptimalPairLots(lot1, lot2);
 
-   // Zabezpieczające upewnienie się, że loty nie przekraczają InpMaxPositionSize
+   // Make sure lots do not exceed InpMaxPositionSize
    lot1 = NormalizeLot(InpSymbol1, lot1);
    lot2 = NormalizeLot(InpSymbol2, lot2);
 
-   // 1. NAJPIERW DAX (DE30)
+   // 1. DAX (DE30) FIRST
    trade.SetTypeFillingBySymbol(InpSymbol1);
    if(!trade.Sell(lot1, InpSymbol1, 0, 0, 0, cmt))
      {
-      Print("Blad otwarcia SHORT ", InpSymbol1, " (para #", idx, ")");
+      Print("Failed to open SHORT ", InpSymbol1, " (pair #", idx, ")");
       lastTransactionTime = GetTickCount64();
       return false;
      }
 
-   // 2. NASTEPNIE NASDAQ (US100)
+   // 2. NASDAQ (US100) SECOND
    trade.SetTypeFillingBySymbol(InpSymbol2);
    if(!trade.Buy(lot2, InpSymbol2, 0, 0, 0, cmt))
      {
-      Print("Blad otwarcia LONG ", InpSymbol2, " (para #", idx, ") -> zamykam osierocony ", InpSymbol1);
+      Print("Failed to open LONG ", InpSymbol2, " (pair #", idx, ") -> closing orphaned ", InpSymbol1);
       ulong t1 = FindPositionTicket(InpSymbol1, magic);
       if(t1 > 0)
         {
@@ -246,13 +266,14 @@ bool OpenPair(int idx, double refSpread)
       return false;
      }
 
-   Print("Otwarto pare #", idx, " | DE30: ", lot1, " lota | US100: ", lot2, " lota");
+   Print("Opened pair #", idx, " | spread: ", DoubleToString(refSpread, 1),
+         " | DE30: ", lot1, " lots | US100: ", lot2, " lots");
    lastTransactionTime = GetTickCount64();
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Zamyka obie nogi danej pary: NAJPIERW DE30, NASTEPNIE US100      |
+//| Closes both legs of a pair: FIRST DE30, THEN US100               |
 //+------------------------------------------------------------------+
 bool ClosePair(int idx,const string reason)
   {
@@ -261,39 +282,40 @@ bool ClosePair(int idx,const string reason)
    ulong t2 = FindPositionTicket(InpSymbol2,magic); // US100
    bool ok = true;
 
-   // 1. ZAWSZE NAJPIERW ZAMYKAMY DE30 (DAX)
+   // 1. ALWAYS CLOSE DE30 (DAX) FIRST
    if(t1 > 0)
      {
       trade.SetTypeFillingBySymbol(InpSymbol1);
       if(!trade.PositionClose(t1))
         {
          ok = false;
-         Print("Blad zamkniecia nogi ", InpSymbol1, " pary #", idx);
+         Print("Failed to close leg ", InpSymbol1, " of pair #", idx);
         }
      }
 
-   // 2. ZAWSZE DRUGI ZAMYKAMY US100 (NASDAQ)
+   // 2. ALWAYS CLOSE US100 (NASDAQ) SECOND
    if(t2 > 0)
      {
       trade.SetTypeFillingBySymbol(InpSymbol2);
       if(!trade.PositionClose(t2))
         {
          ok = false;
-         Print("Blad zamkniecia nogi ", InpSymbol2, " pary #", idx);
+         Print("Failed to close leg ", InpSymbol2, " of pair #", idx);
         }
      }
 
    if(ok)
-      Print("Zamknieto pare #", idx, " (Kolejnosc: DE30 -> US100) powod: ", reason);
+      Print("Closed pair #", idx, " (order: DE30 -> US100) reason: ", reason);
 
    lastTransactionTime = GetTickCount64();
    return ok;
   }
 
 //+------------------------------------------------------------------+
-//| Wyswietlanie podsumowania w wybranym miejscu okna                |
+//| Displays the summary panel on the chart                          |
 //+------------------------------------------------------------------+
-void UpdateDashboard(int activeCount, double openCostSpread, double closableSpread,
+void UpdateDashboard(int activeCount, double openCostSpread, double closableSpread, double nextStep,
+                     double nextTrigger,
                      const bool &isActive[], const double &entrySpread[], const double &pairProfitEUR[])
   {
    string txt = "";
@@ -306,13 +328,14 @@ void UpdateDashboard(int activeCount, double openCostSpread, double closableSpre
    if(TimeCurrent() < tradingAllowedTime)
      {
       int remainingSec = (int)(tradingAllowedTime - TimeCurrent());
-      txt += "                             [ STATUS: Oczekiwanie po przerwie nocnej: " + IntegerToString(remainingSec) + "s ]\n";
+      txt += "                             [ STATUS: Waiting after night break: " + IntegerToString(remainingSec) + "s ]\n";
      }
 
-   txt += "                             Aktywne pary: " + IntegerToString(activeCount) + " / " + IntegerToString(InpMaxPairs) + "\n";
-   txt += "                             Spread (otwarcie): " + DoubleToString(openCostSpread, 2) + " pkt | (zamkniecie): " + DoubleToString(closableSpread, 2) + " pkt\n";
+   txt += "                             Active pairs: " + IntegerToString(activeCount) + " / " + IntegerToString(InpMaxPairs) + "\n";
+   txt += "                             Spread (open): " + DoubleToString(openCostSpread, 2) + " pts | (close): " + DoubleToString(closableSpread, 2) + " pts\n";
+
    txt += "                             ---------------------------------------------------\n";
-   txt += "                                 #   |   Spread Wejscia  |    Profit (EUR)\n";
+   txt += "                                 #   |   Entry Spread    |    Profit (EUR)\n";
    txt += "                             ---------------------------------------------------\n";
 
    if(isActive[1])
@@ -347,35 +370,44 @@ void UpdateDashboard(int activeCount, double openCostSpread, double closableSpre
      }
    else if(!isActive[1])
      {
-      txt += "                                            ( Brak aktywnych pozycji )\n";
+      txt += "                                            ( No active positions )\n";
      }
+
+   // "#Next" row: spread at which the next pair opens and, in brackets, the required distance (step)
+   txt += "                             ---------------------------------------------------\n";
+   if(activeCount == 0)
+      txt += "                               #Next  |      " + DoubleToString(InpStartGapPoints, 1) + "  (start gap)\n";
+   else if(nextStep > 0)
+      txt += "                               #Next  |      " + DoubleToString(nextTrigger, 1) + "  (" + DoubleToString(nextStep, 1) + " pts)\n";
+   else
+      txt += "                               #Next  |      -  (max pairs reached)\n";
 
    Comment(txt);
   }
 
 //+------------------------------------------------------------------+
-//| Główna funkcja wykonawcza (wspólna dla OnTick i OnTimer)         |
+//| Main execution function (shared by OnTick and OnTimer)           |
 //+------------------------------------------------------------------+
 void ProcessLogic()
   {
-   // 1. Sprawdzamy, czy oba instrumenty są tradowalne
+   // 1. Check whether both instruments are tradable
    bool sym1Tradable = IsSymbolTradable(InpSymbol1);
    bool sym2Tradable = IsSymbolTradable(InpSymbol2);
 
-   // Jeśli KTÓRYKOLWIEK jest nietradowalny (np. przerwa nocna), oznaczamy przerwę w sesji
+   // If ANY of them is not tradable (e.g. night break), mark a session break
    if(!sym1Tradable || !sym2Tradable)
      {
       wasSessionBreak = true;
-      Comment("DE30vsUS100 EA: czekam - co najmniej jeden z instrumentow w przerwie handlowej");
+      Comment("DE30vsUS100 EA: waiting - at least one instrument is in a trading break");
       return;
      }
 
-   // 2. Jeśli wystąpiła przerwa w tradowaniu i OBA symbole właśnie wróciły do gry:
+   // 2. If there was a break and BOTH symbols just came back:
    if(wasSessionBreak)
      {
       wasSessionBreak    = false;
       tradingAllowedTime = TimeCurrent() + InpStartDelaySec;
-      Print("Wznowienie handlu po przerwie nocnej. Blokada otwarcia pozycji na ", InpStartDelaySec, " sek.");
+      Print("Trading resumed after break. Opening blocked for ", InpStartDelaySec, " sec.");
      }
 
    double bid1 = SymbolInfoDouble(InpSymbol1, SYMBOL_BID);
@@ -401,7 +433,7 @@ void ProcessLogic()
    int activeCount = 0;
    double minActiveEntry = 999999.0;
 
-   // Sprawdzanie czasu dla transakcji handlowych (Cooldown)
+   // Cooldown between trades
    bool canTrade = true;
    if(InpMinTradeIntervalSec > 0)
      {
@@ -410,7 +442,7 @@ void ProcessLogic()
          canTrade = false;
      }
 
-   // 3) Sprawdzanie pozycji, TP kwotowego oraz obsługa osieroconych nóg
+   // 3) Check positions, money-based TP and handle orphaned legs
    for(int idx = 1; idx <= InpMaxPairs; idx++)
      {
       long magic = InpMagicBase + idx;
@@ -433,19 +465,19 @@ void ProcessLogic()
             nqOpen = PositionGetDouble(POSITION_PRICE_OPEN);
            }
 
-         // Sprawdzenie progu zysku w EUR
+         // Check profit threshold in EUR
          if(moneyProfit >= InpTakeProfitEUR)
            {
             if(canTrade)
-               ClosePair(idx, "TP osiągnięty: " + DoubleToString(moneyProfit, 2) + " EUR");
+               ClosePair(idx, "TP reached: " + DoubleToString(moneyProfit, 2) + " EUR");
            }
          else
            {
             double entrySpread = nqOpen - daxOpen;
             activeCount++;
-            pairIsActive[idx]     = true;
+            pairIsActive[idx]    = true;
             pairEntrySpread[idx] = entrySpread;
-            pairProfitEUR[idx]    = moneyProfit;
+            pairProfitEUR[idx]   = moneyProfit;
 
             if(entrySpread < minActiveEntry)
                minActiveEntry = entrySpread;
@@ -458,7 +490,7 @@ void ProcessLogic()
             datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
             if(TimeCurrent() - openTime > InpOrphanDelaySec && canTrade)
               {
-               Print("Noga ", InpSymbol2, " nie otworzyla sie. Zamykam osierocony ", InpSymbol1);
+               Print("Leg ", InpSymbol2, " did not open. Closing orphaned ", InpSymbol1);
                trade.SetTypeFillingBySymbol(InpSymbol1);
                trade.PositionClose(t1);
                lastTransactionTime = GetTickCount64();
@@ -472,7 +504,7 @@ void ProcessLogic()
             datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
             if(TimeCurrent() - openTime > InpOrphanDelaySec && canTrade)
               {
-               Print("Noga ", InpSymbol1, " nie otworzyla sie. Zamykam osierocony ", InpSymbol2);
+               Print("Leg ", InpSymbol1, " did not open. Closing orphaned ", InpSymbol2);
                trade.SetTypeFillingBySymbol(InpSymbol2);
                trade.PositionClose(t2);
                lastTransactionTime = GetTickCount64();
@@ -481,7 +513,11 @@ void ProcessLogic()
         }
      }
 
-   // 4) Otwieranie nowych pozycji (Zabezpieczenie po wznowieniu handlu)
+   // Dynamic step recalculated on every pass from the number of pairs still available
+   double nextStep    = (activeCount > 0) ? CalculateDynamicStep(activeCount) : 0.0;
+   double nextTrigger = (activeCount > 0) ? (minActiveEntry - nextStep) : InpStartGapPoints;
+
+   // 4) Open new positions (protected after trading resumes)
    if(canTrade && TimeCurrent() >= tradingAllowedTime)
      {
       bool inRange = true;
@@ -500,19 +536,21 @@ void ProcessLogic()
               }
             else
               {
-               if(minActiveEntry - openCostSpread >= InpGridStepPoints)
+               // Spread must drop by the dynamic step below the lowest active entry
+               if(minActiveEntry - openCostSpread >= nextStep)
                   OpenPair(nextIdx, openCostSpread);
               }
            }
         }
      }
 
-   // 5) Aktualizacja panelu informacyjnego
-   UpdateDashboard(activeCount, openCostSpread, closableSpread, pairIsActive, pairEntrySpread, pairProfitEUR);
+   // 5) Update the information panel
+   UpdateDashboard(activeCount, openCostSpread, closableSpread, nextStep, nextTrigger,
+                   pairIsActive, pairEntrySpread, pairProfitEUR);
   }
 
 //+------------------------------------------------------------------+
-//| OnTick (dla Testera Strategii)                                   |
+//| OnTick (for Strategy Tester)                                     |
 //+------------------------------------------------------------------+
 void OnTick()
   {
@@ -520,7 +558,7 @@ void OnTick()
   }
 
 //+------------------------------------------------------------------+
-//| OnTimer (dla Handlu na Żywo - odświeżanie co InpTimerMS)         |
+//| OnTimer (for live trading - refresh every InpTimerMS)            |
 //+------------------------------------------------------------------+
 void OnTimer()
   {
